@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, type FormEvent, type ChangeEvent, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -28,27 +28,23 @@ interface ServerError {
 // ── Particle Background Component ─────────────────────────────────────────
 
 function ParticleField() {
-  const particles = useRef<
-    Array<{ id: number; x: string; y: string; size: number; delay: number; duration: number; dx: string }>
-  >();
-
-  if (!particles.current) {
-    particles.current = Array.from({ length: 20 }, (_, i) => ({
-      id: i,
-      x: `${Math.random() * 100}%`,
-      y: `${Math.random() * 100}%`,
-      size: 1.5 + Math.random() * 2.5,
-      delay: Math.random() * 8,
-      duration: 5 + Math.random() * 7,
-      dx: `${-30 + Math.random() * 60}px`,
-    }));
-  }
-
-  const list = particles.current;
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 20 }, (_, i) => ({
+        id: i,
+        x: `${Math.random() * 100}%`,
+        y: `${Math.random() * 100}%`,
+        size: 1.5 + Math.random() * 2.5,
+        delay: Math.random() * 8,
+        duration: 5 + Math.random() * 7,
+        dx: `${-30 + Math.random() * 60}px`,
+      })),
+    [],
+  );
 
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-      {list.map((p) => (
+      {particles.map((p) => (
         <div
           key={p.id}
           className="absolute rounded-full bg-phosphor"
@@ -651,7 +647,7 @@ export default function RegisterPage() {
           Already have an account?{" "}
           <button
             type="button"
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/login")}
             className="font-medium text-phosphor/60 transition-colors hover:text-phosphor"
           >
             Sign in
