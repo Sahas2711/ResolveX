@@ -1,0 +1,27 @@
+Title|Description|Label|Milestone
+Initialize Next.js Architecture|Setup Next.js 15, TypeScript, App Router, project structure, environment configuration and coding standards.|backend|Foundation & Security
+Design PostgreSQL Database Schema|Create ERD, entities, relationships and PostgreSQL schema.|database|Foundation & Security
+Configure Prisma ORM & Migrations|Setup Prisma ORM, migration strategy and baseline database schema.|database|Foundation & Security
+Implement JWT Authentication|Register, login, refresh token and logout APIs.|security|Foundation & Security
+Implement RBAC Authorization|Roles, permissions and access control.|security|Foundation & Security
+Configure API Documentation|Generate and maintain API documentation.|documentation|Foundation & Security
+Develop Product Management APIs|CRUD operations for products.|api|Product & Team Management
+Develop Team Management APIs|CRUD operations for teams.|api|Product & Team Management
+Implement Team Member Management|Add and remove team members.|backend|Product & Team Management
+Implement User Management APIs|Profile management and administration APIs.|api|Product & Team Management
+Implement Product-Team Mapping|Map products to responsible support teams.|backend|Product & Team Management
+Implement Audit Logging Framework|Track system actions and changes.|backend|Product & Team Management
+Implement Complaint Creation API|Create complaints and validate requests.|api|Complaint Lifecycle Engine
+Implement Auto Assignment Engine|Least-load assignment algorithm for staff allocation.|critical|Complaint Lifecycle Engine
+Implement Complaint Status Workflow|Complaint lifecycle state machine.|critical|Complaint Lifecycle Engine
+Implement Complaint Comments Module|Internal notes and customer comments.|backend|Complaint Lifecycle Engine
+Implement Complaint Attachments Module|File uploads and storage integration.|backend|Complaint Lifecycle Engine
+Implement Complaint Timeline API|Complaint activity history and timeline.|api|Complaint Lifecycle Engine
+Implement Search and Filtering|Advanced filtering and pagination.|api|Complaint Lifecycle Engine
+Develop Dashboard Overview API|System-wide KPI dashboard.|analytics|Analytics Documentation & Release
+Develop Staff Performance Dashboard|Staff productivity metrics.|analytics|Analytics Documentation & Release
+Develop Team Performance Dashboard|Team-level analytics.|analytics|Analytics Documentation & Release
+Develop Product Analytics Dashboard|Product-wise complaint analysis.|analytics|Analytics Documentation & Release
+Write README and Setup Guide|Installation, architecture and API usage guide.|documentation|Analytics Documentation & Release
+Dockerize Application|Dockerfile, docker-compose and deployment setup.|enhancement|Analytics Documentation & Release
+Integration Testing and QA|End-to-end testing, validation and bug fixing.|testing|Analytics Documentation & Release
