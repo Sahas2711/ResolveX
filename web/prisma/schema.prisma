@@ -1,0 +1,691 @@
+// =============================================================================
+// ResolveX — Enterprise Complaint Management System
+// Prisma Schema — PostgreSQL 16
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ComplaintSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  SEVERE
+}
+
+enum ComplaintStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  WAITING_CUSTOMER
+  RESOLVED
+  CLOSED
+  REOPENED
+  ESCALATED
+}
+
+enum ProductStatus {
+  ACTIVE
+  DEPRECATED
+  DISABLED
+}
+
+enum NotificationType {
+  ASSIGNMENT
+  ESCALATION
+  RESOLUTION
+  COMMENT
+  SLA_BREACH
+}
+
+enum AssignmentSource {
+  SYSTEM
+  LEAD
+  ADMIN
+}
+
+enum EscalationLevel {
+  L1
+  L2
+  L3
+  MANAGEMENT
+}
+
+enum TimelineEventType {
+  STATUS_CHANGE
+  ASSIGNMENT
+  COMMENT
+  ESCALATION
+  RESOLUTION
+  ATTACHMENT
+}
+
+enum TeamMemberRole {
+  LEAD
+  MEMBER
+}
+
+enum SlaType {
+  FIRST_RESPONSE
+  RESOLUTION
+}
+
+// =============================================================================
+// SECURITY & RBAC DOMAIN
+// =============================================================================
+
+model User {
+  id             String     @id @default(uuid()) @db.Uuid
+  employeeId     String     @unique @db.VarChar(50)
+  firstName      String     @db.VarChar(100)
+  lastName       String     @db.VarChar(100)
+  email          String     @unique @db.VarChar(255)
+  phone          String?    @db.VarChar(20)
+  passwordHash   String     @db.Text
+  profileImageUrl String?   @db.Text
+  status         UserStatus @default(ACTIVE)
+  isActive       Boolean    @default(true) @db.Boolean
+  lastLoginAt    DateTime?  @db.Timestamp(6)
+  deletedAt      DateTime?  @db.Timestamp(6)
+  createdAt      DateTime   @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime   @updatedAt @db.Timestamp(6)
+
+  // Relations
+  userRoles           UserRole[]
+  refreshTokens       RefreshToken[]
+  complaintsAsCustomer   Complaint[]      @relation("ComplaintCustomer")
+  complaintsAsAgent      Complaint[]      @relation("ComplaintAssignedAgent")
+  comments            Comment[]
+  attachments         Attachment[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  teamMemberships     TeamMember[]
+  assignmentsAsAgent  Assignment[]       @relation("AssignmentAgent")
+  statusChanges       ComplaintStatusHistory[]
+  escalationsToUser   Escalation[]       @relation("EscalationUser")
+  staffMetrics        StaffPerformanceMetric[]
+  teamsManaged        Team[]             @relation("TeamManager")
+
+  @@index([email])
+  @@index([employeeId])
+  @@index([status])
+  @@index([isActive])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@index([name])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  rolePermissions RolePermission[]
+
+  @@index([name])
+  @@map("permissions")
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  roleId    String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid()) @db.Uuid
+  roleId       String   @db.Uuid
+  permissionId String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tokenHash String   @db.Text
+  expiresAt DateTime @db.Timestamp(6)
+  revoked   Boolean  @default(false) @db.Boolean
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+// =============================================================================
+// PRODUCT DOMAIN
+// =============================================================================
+
+model ProductCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  products Product[]
+
+  @@index([name])
+  @@map("product_categories")
+}
+
+model Product {
+  id          String        @id @default(uuid()) @db.Uuid
+  productCode String        @unique @db.VarChar(50)
+  productName String        @db.VarChar(255)
+  description String?       @db.Text
+  categoryId  String        @db.Uuid
+  ownerId     String?       @db.Uuid
+  status      ProductStatus @default(ACTIVE)
+  deletedAt   DateTime?     @db.Timestamp(6)
+  createdAt   DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime      @updatedAt @db.Timestamp(6)
+
+  category            ProductCategory        @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  slaRules            ProductSLARule[]
+  teamMappings        ProductTeamMapping[]
+  complaints          Complaint[]
+  assignmentRules     AssignmentRule[]
+  complaintCategories ComplaintCategory[]
+  complaintMetrics    ProductComplaintMetric[]
+
+  @@index([categoryId])
+  @@index([status])
+  @@map("products")
+}
+
+model ProductSLARule {
+  id                    String   @id @default(uuid()) @db.Uuid
+  productId             String   @db.Uuid
+  priority              ComplaintPriority
+  severity              ComplaintSeverity
+  responseTimeMinutes   Int
+  resolutionTimeMinutes Int
+  escalationTimeMinutes Int?
+  createdAt             DateTime @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime @updatedAt @db.Timestamp(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([productId, priority, severity])
+  @@index([productId])
+  @@map("product_sla_rules")
+}
+
+// =============================================================================
+// TEAM DOMAIN
+// =============================================================================
+
+model Team {
+  id          String   @id @default(uuid()) @db.Uuid
+  teamName    String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  managerId   String?  @db.Uuid
+  deletedAt   DateTime? @db.Timestamp(6)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  manager              User?                    @relation("TeamManager", fields: [managerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  members              TeamMember[]
+  productMappings      ProductTeamMapping[]
+  complaints           Complaint[]             @relation("ComplaintTeam")
+  assignments          Assignment[]            @relation("AssignmentTeam")
+  escalationsToTeam    Escalation[]            @relation("EscalationTeam")
+  performanceMetrics   TeamPerformanceMetric[]
+
+  @@index([teamName])
+  @@index([managerId])
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String        @id @default(uuid()) @db.Uuid
+  teamId    String        @db.Uuid
+  userId    String        @db.Uuid
+  role      TeamMemberRole @default(MEMBER)
+  joinedAt  DateTime      @default(now()) @db.Timestamp(6)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+model ProductTeamMapping {
+  id         String  @id @default(uuid()) @db.Uuid
+  productId  String  @db.Uuid
+  teamId     String  @db.Uuid
+  isPrimary  Boolean @default(false) @db.Boolean
+  loadWeight Float   @default(1.0) @db.Real
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  team    Team    @relation(fields: [teamId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([productId, teamId])
+  @@index([productId])
+  @@index([teamId])
+  @@map("product_team_mappings")
+}
+
+// =============================================================================
+// COMPLAINT DOMAIN
+// =============================================================================
+
+model ComplaintCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  productId   String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  product    Product?    @relation(fields: [productId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  complaints Complaint[]
+
+  @@index([productId])
+  @@index([name])
+  @@map("complaint_categories")
+}
+
+model Complaint {
+  id                      String            @id @default(uuid()) @db.Uuid
+  ticketNumber            String            @unique @db.VarChar(20)
+  title                   String            @db.VarChar(255)
+  description             String            @db.Text
+  customerId              String            @db.Uuid
+  productId               String            @db.Uuid
+  categoryId              String            @db.Uuid
+  priority                ComplaintPriority
+  severity                ComplaintSeverity
+  currentStatus           ComplaintStatus   @default(OPEN)
+  assignedTeamId          String?           @db.Uuid
+  assignedAgentId         String?           @db.Uuid
+  source                  String?           @db.VarChar(50)
+  resolutionSummary       String?           @db.Text
+  slaFirstResponseDeadline DateTime?         @db.Timestamp(6)
+  slaResolutionDeadline   DateTime?         @db.Timestamp(6)
+  deletedAt               DateTime?         @db.Timestamp(6)
+  createdAt               DateTime          @default(now()) @db.Timestamp(6)
+  updatedAt               DateTime          @updatedAt @db.Timestamp(6)
+  resolvedAt              DateTime?         @db.Timestamp(6)
+  closedAt                DateTime?         @db.Timestamp(6)
+
+  customer      User     @relation("ComplaintCustomer", fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  assignedAgent User?    @relation("ComplaintAssignedAgent", fields: [assignedAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  assignedTeam  Team?    @relation("ComplaintTeam", fields: [assignedTeamId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  category      ComplaintCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  comments        Comment[]
+  attachments     Attachment[]
+  assignments     Assignment[]
+  slaTrackings    SLATracking[]
+  escalations     Escalation[]
+  statusHistory   ComplaintStatusHistory[]
+  timeline        ComplaintTimeline[]
+  slaBreachLogs   SlaBreachLog[]
+
+  @@index([currentStatus])
+  @@index([priority])
+  @@index([severity])
+  @@index([customerId])
+  @@index([assignedAgentId])
+  @@index([assignedTeamId])
+  @@index([productId])
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([currentStatus, priority])
+  @@index([assignedTeamId, currentStatus])
+  @@index([productId, currentStatus])
+  @@index([customerId, createdAt])
+  @@index([assignedAgentId, currentStatus])
+  @@index([ticketNumber])
+  @@map("complaints")
+}
+
+model Comment {
+  id          String   @id @default(uuid()) @db.Uuid
+  complaintId String   @db.Uuid
+  userId      String   @db.Uuid
+  content     String   @db.Text
+  isInternal  Boolean  @default(false) @db.Boolean
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([complaintId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("complaint_comments")
+}
+
+model Attachment {
+  id          String   @id @default(uuid()) @db.Uuid
+  complaintId String   @db.Uuid
+  uploadedBy  String   @db.Uuid
+  fileName    String   @db.VarChar(255)
+  fileType    String   @db.VarChar(100)
+  fileSize    Int
+  storageUrl  String   @db.Text
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  uploadedByUser User @relation(fields: [uploadedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([complaintId])
+  @@index([uploadedBy])
+  @@map("complaint_attachments")
+}
+
+model Assignment {
+  id               String           @id @default(uuid()) @db.Uuid
+  complaintId      String           @db.Uuid
+  assignedTeamId   String?          @db.Uuid
+  assignedAgentId  String?          @db.Uuid
+  assignedBy       AssignmentSource
+  assignmentReason String?          @db.VarChar(500)
+  createdAt        DateTime         @default(now()) @db.Timestamp(6)
+
+  complaint      Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  assignedTeam   Team?     @relation("AssignmentTeam", fields: [assignedTeamId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  assignedAgent  User?     @relation("AssignmentAgent", fields: [assignedAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([complaintId])
+  @@index([assignedTeamId])
+  @@index([assignedAgentId])
+  @@index([createdAt])
+  @@map("complaint_assignments")
+}
+
+model SLATracking {
+  id                   String   @id @default(uuid()) @db.Uuid
+  complaintId          String   @db.Uuid
+  responseDueAt        DateTime @db.Timestamp(6)
+  resolutionDueAt      DateTime @db.Timestamp(6)
+  firstResponseAt      DateTime? @db.Timestamp(6)
+  resolvedAt           DateTime? @db.Timestamp(6)
+  breachedResponseSla  Boolean  @default(false) @db.Boolean
+  breachedResolutionSla Boolean @default(false) @db.Boolean
+  createdAt            DateTime @default(now()) @db.Timestamp(6)
+  updatedAt            DateTime @updatedAt @db.Timestamp(6)
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([complaintId])
+  @@index([breachedResponseSla])
+  @@index([breachedResolutionSla])
+  @@index([responseDueAt])
+  @@index([resolutionDueAt])
+  @@map("complaint_sla_tracking")
+}
+
+model Escalation {
+  id               String          @id @default(uuid()) @db.Uuid
+  complaintId      String          @db.Uuid
+  escalationLevel  EscalationLevel
+  escalatedToTeam  String?         @db.Uuid
+  escalatedToUser  String?         @db.Uuid
+  reason           String?         @db.Text
+  createdAt        DateTime        @default(now()) @db.Timestamp(6)
+
+  complaint      Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  escalatedToTeamRel Team?  @relation("EscalationTeam", fields: [escalatedToTeam], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  escalatedToUserRel User?  @relation("EscalationUser", fields: [escalatedToUser], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([complaintId])
+  @@index([escalationLevel])
+  @@map("escalations")
+}
+
+model ComplaintStatusHistory {
+  id           String          @id @default(uuid()) @db.Uuid
+  complaintId  String          @db.Uuid
+  oldStatus    ComplaintStatus
+  newStatus    ComplaintStatus
+  changedBy    String          @db.Uuid
+  remarks      String?         @db.VarChar(500)
+  createdAt    DateTime        @default(now()) @db.Timestamp(6)
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  changedByUser User  @relation(fields: [changedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([complaintId])
+  @@index([changedBy])
+  @@index([createdAt])
+  @@map("complaint_status_history")
+}
+
+model ComplaintTimeline {
+  id          String             @id @default(uuid()) @db.Uuid
+  complaintId String             @db.Uuid
+  eventType   TimelineEventType
+  actorId     String             @db.Uuid
+  eventData   Json?              @db.JsonB
+  createdAt   DateTime           @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime           @updatedAt @db.Timestamp(6)
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([complaintId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("complaint_timeline")
+}
+
+// =============================================================================
+// ASSIGNMENT RULES
+// =============================================================================
+
+model AssignmentRule {
+  id          String   @id @default(uuid()) @db.Uuid
+  productId   String   @db.Uuid
+  categoryId  String?  @db.Uuid
+  priority    ComplaintPriority
+  teamId      String   @db.Uuid
+  isActive    Boolean  @default(true) @db.Boolean
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([productId])
+  @@index([teamId])
+  @@index([priority])
+  @@map("assignment_rules")
+}
+
+// =============================================================================
+// AUDIT & TRACKING
+// =============================================================================
+
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  entityType   String   @db.VarChar(50)
+  entityId     String   @db.Uuid
+  action       String   @db.VarChar(50)
+  oldValues    Json?    @db.JsonB
+  newValues    Json?    @db.JsonB
+  performedBy  String   @db.Uuid
+  ipAddress    String?  @db.VarChar(45)
+  userAgent    String?  @db.Text
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @db.Timestamp(6)
+
+  performedByUser User @relation(fields: [performedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([entityType])
+  @@index([entityId])
+  @@index([performedBy])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id               String           @id @default(uuid()) @db.Uuid
+  userId           String           @db.Uuid
+  title            String           @db.VarChar(255)
+  message          String           @db.Text
+  type             NotificationType
+  isRead           Boolean          @default(false) @db.Boolean
+  referenceId      String?          @db.Uuid
+  createdAt        DateTime         @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime         @updatedAt @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model SlaBreachLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  complaintId String   @db.Uuid
+  slaType     SlaType
+  breachedAt  DateTime @default(now()) @db.Timestamp(6)
+  actionTaken String?  @db.Text
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([complaintId])
+  @@index([slaType])
+  @@map("sla_breach_logs")
+}
+
+// =============================================================================
+// METRICS DOMAIN
+// =============================================================================
+
+model TicketMetricsDaily {
+  id                String   @id @default(uuid()) @db.Uuid
+  metricDate        DateTime @db.Timestamp(6)
+  totalCreated      Int      @default(0)
+  totalResolved     Int      @default(0)
+  totalClosed       Int      @default(0)
+  totalReopened     Int      @default(0)
+  avgResolutionTime Float?   @db.Real
+  createdAt         DateTime @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime @updatedAt @db.Timestamp(6)
+
+  @@unique([metricDate])
+  @@index([metricDate])
+  @@map("ticket_metrics_daily")
+}
+
+model StaffPerformanceMetric {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  assignedTickets   Int      @default(0)
+  resolvedTickets   Int      @default(0)
+  pendingTickets    Int      @default(0)
+  avgResolutionTime Float?   @db.Real
+  productivityScore Float?   @db.Real
+  calculatedAt      DateTime @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime @updatedAt @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([calculatedAt])
+  @@map("staff_performance_metrics")
+}
+
+model TeamPerformanceMetric {
+  id                      String   @id @default(uuid()) @db.Uuid
+  teamId                  String   @db.Uuid
+  assignedTickets         Int      @default(0)
+  completedTickets        Int      @default(0)
+  pendingTickets          Int      @default(0)
+  slaCompliancePercentage Float?   @db.Real
+  avgResolutionTime       Float?   @db.Real
+  calculatedAt            DateTime @default(now()) @db.Timestamp(6)
+  updatedAt               DateTime @updatedAt @db.Timestamp(6)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([teamId])
+  @@index([calculatedAt])
+  @@map("team_performance_metrics")
+}
+
+model ProductComplaintMetric {
+  id                String   @id @default(uuid()) @db.Uuid
+  productId         String   @db.Uuid
+  complaintCount    Int      @default(0)
+  resolvedCount     Int      @default(0)
+  openCount         Int      @default(0)
+  avgResolutionTime Float?   @db.Real
+  calculatedAt      DateTime @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime @updatedAt @db.Timestamp(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([productId])
+  @@index([calculatedAt])
+  @@map("product_complaint_metrics")
+}
