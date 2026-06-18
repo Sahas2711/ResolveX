@@ -1,26 +1,330 @@
+@import url('https://fonts.googleapis.com/css2?family=Switzer:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ============================================================
+   RESOLVEX — Canonical Theme
+   Deep ocean. Luminous plasma. Intelligent fluid.
+   ============================================================ */
 
+/* ── Theme Tokens ─────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Atmospheric Palette */
+  --color-abyss: #0A0E14;
+  --color-hadal: #131A24;
+  --color-phosphor: #C8E6C9;
+  --color-bathyal: #2E4A4A;
+  --color-thermocline: #3A5A5A;
+  --color-magma: #FF6F3C;
+  --color-aurora: #A7F3D0;
+  --color-cosmic-dust: #E2C498;
+  --color-obsidian: #1A1F28;
+  --color-solvent: #F0F4F8;
+
+  /* Signal Derivatives */
+  --color-phosphor-glow: rgba(200, 230, 201, 0.3);
+  --color-phosphor-soft: rgba(200, 230, 201, 0.12);
+  --color-magma-glow: rgba(255, 111, 60, 0.3);
+  --color-aurora-glow: rgba(167, 243, 208, 0.2);
+  --color-cosmic-glow: rgba(226, 196, 152, 0.15);
+  --color-bathyal-glow: rgba(46, 74, 74, 0.4);
+  --color-hadal-glass: rgba(19, 26, 36, 0.75);
+  --color-abyss-glass: rgba(10, 14, 20, 0.85);
+
+  /* Fonts */
+  --font-sans: "Switzer", "Switzer Fallback", system-ui, -apple-system, sans-serif;
+  --font-serif: "Instrument Serif", "Instrument Serif Fallback", Georgia, serif;
+  --font-mono: "JetBrains Mono", "JetBrains Mono Fallback", "Fira Code", "Consolas", monospace;
+
+  /* Animations */
+  --animate-breath: breath 8s ease-in-out infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 4s ease-in-out infinite;
+  --animate-fade-in: fade-in 0.6s ease-out forwards;
+  --animate-slide-up: slide-up 0.5s ease-out forwards;
+  --animate-shimmer: shimmer 3s ease-in-out infinite;
+  --animate-drift: drift 12s ease-in-out infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Font Fallbacks (self-hosted) ────────────────────────── */
+@font-face {
+  font-family: "Switzer Fallback";
+  src: local("Segoe UI"), local("Helvetica Neue"), local("Arial");
+  size-adjust: 98%;
+  ascent-override: 92%;
+  descent-override: 24%;
+  line-gap-override: 8%;
+}
+
+@font-face {
+  font-family: "Instrument Serif Fallback";
+  src: local("Georgia"), local("Times New Roman");
+  size-adjust: 95%;
+  ascent-override: 88%;
+  descent-override: 22%;
+}
+
+@font-face {
+  font-family: "JetBrains Mono Fallback";
+  src: local("Consolas"), local("Courier New");
+  size-adjust: 90%;
+}
+
+/* ── Keyframes ───────────────────────────────────────────── */
+@keyframes breath {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.005); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; filter: blur(60px); transform: scale(0.95); }
+  50% { opacity: 0.8; filter: blur(80px); transform: scale(1.05); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -20px) scale(1.05); }
+  50% { transform: translate(-20px, 10px) scale(0.95); }
+  75% { transform: translate(15px, -30px) scale(1.02); }
+}
+
+@keyframes ring-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes particle-float {
+  0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+  20% { opacity: 0.6; }
+  80% { opacity: 0.4; }
+  100% { transform: translateY(-120px) translateX(var(--dx, 20px)) scale(0.3); opacity: 0; }
+}
+
+/* ── Base Styles ─────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-abyss);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(200, 230, 201, 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(46, 74, 74, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 50% at 20% 60%, rgba(167, 243, 208, 0.03) 0%, transparent 60%);
+  background-attachment: fixed;
+  animation: breath 8s ease-in-out infinite;
+  min-height: 100dvh;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-bathyal);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-thermocline);
+}
+
+/* ── Selection ───────────────────────────────────────────── */
+::selection {
+  background: var(--color-phosphor-soft);
+  color: var(--color-phosphor);
+}
+
+/* ── Focus Ring ──────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--color-phosphor);
+  outline-offset: 2px;
+}
+
+/* ── Custom Utility Classes ──────────────────────────────── */
+
+/* Glass-morphism base — never full opacity, heavily blurred */
+.glass-surface {
+  background: var(--color-hadal-glass);
+  backdrop-filter: blur(24px) saturate(0.8);
+  -webkit-backdrop-filter: blur(24px) saturate(0.8);
+  border: 1px solid rgba(200, 230, 201, 0.06);
+}
+
+/* Elevated glass (foreground) */
+.glass-elevated {
+  background: var(--color-abyss-glass);
+  backdrop-filter: blur(32px) saturate(0.9);
+  -webkit-backdrop-filter: blur(32px) saturate(0.9);
+  border: 1px solid rgba(200, 230, 201, 0.08);
+}
+
+/* Phosphor glow ring (for focus/active states) */
+.glow-ring {
+  box-shadow:
+    0 0 20px rgba(200, 230, 201, 0.08),
+    0 0 60px rgba(200, 230, 201, 0.04);
+}
+
+/* Magma glow (for urgency) */
+.glow-magma {
+  box-shadow:
+    0 0 20px rgba(255, 111, 60, 0.15),
+    0 0 60px rgba(255, 111, 60, 0.06);
+}
+
+/* Aurora glow (for success/healthy states) */
+.glow-aurora {
+  box-shadow:
+    0 0 20px rgba(167, 243, 208, 0.12),
+    0 0 60px rgba(167, 243, 208, 0.05);
+}
+
+/* Input base — no rectangle borders, just luminous underlines */
+.input-plasma {
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--color-bathyal);
+  color: var(--color-solvent);
+  font-family: var(--font-sans);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.input-plasma::placeholder {
+  color: rgba(240, 244, 248, 0.25);
+}
+
+.input-plasma:focus {
+  border-bottom-color: var(--color-phosphor);
+  box-shadow: 0 4px 20px -8px rgba(200, 230, 201, 0.15);
+  outline: none;
+}
+
+.input-plasma.error {
+  border-bottom-color: var(--color-magma);
+  box-shadow: 0 4px 20px -8px rgba(255, 111, 60, 0.15);
+}
+
+.input-plasma:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Phosphor button — luminous plasma button */
+.btn-phosphor {
+  position: relative;
+  background: linear-gradient(135deg, rgba(200, 230, 201, 0.12), rgba(200, 230, 201, 0.06));
+  border: 1px solid rgba(200, 230, 201, 0.15);
+  color: var(--color-phosphor);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.btn-phosphor::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(200, 230, 201, 0.08) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 4s ease-in-out infinite;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.btn-phosphor:hover::before {
+  opacity: 1;
+}
+
+.btn-phosphor:hover {
+  background: linear-gradient(135deg, rgba(200, 230, 201, 0.18), rgba(200, 230, 201, 0.1));
+  border-color: rgba(200, 230, 201, 0.3);
+  box-shadow:
+    0 0 30px rgba(200, 230, 201, 0.12),
+    0 0 60px rgba(200, 230, 201, 0.05),
+    inset 0 1px 0 rgba(200, 230, 201, 0.1);
+  transform: translateY(-1px);
+}
+
+.btn-phosphor:active {
+  transform: translateY(0px);
+  box-shadow: 0 0 20px rgba(200, 230, 201, 0.08);
+}
+
+.btn-phosphor:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Orbital ring spinner (for loading states) */
+.spinner-ring {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(200, 230, 201, 0.1);
+  border-top-color: var(--color-phosphor);
+  animation: ring-rotate 0.8s linear infinite;
+}
+
+/* Floating label container */
+.floating-label {
+  position: relative;
+}
+
+.floating-label label {
+  position: absolute;
+  left: 0;
+  top: 12px;
+  color: rgba(240, 244, 248, 0.35);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 400;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.floating-label .input-plasma:focus + label,
+.floating-label .input-plasma:not(:placeholder-shown) + label,
+.floating-label .input-plasma.filled + label {
+  top: -14px;
+  font-size: 0.75rem;
+  color: var(--color-phosphor);
+}
+
+.floating-label .input-plasma.error + label {
+  color: var(--color-magma);
 }
