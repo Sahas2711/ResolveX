@@ -30,6 +30,9 @@ export const Permissions = {
   TEAM_CREATE: "team:create",
   TEAM_READ: "team:read",
   TEAM_UPDATE: "team:update",
+  TEAM_DELETE: "team:delete",
+  TEAM_MEMBER_ADD: "team:member:add",
+  TEAM_MEMBER_REMOVE: "team:member:remove",
 
   // Dashboards
   DASHBOARD_STAFF: "dashboard:staff",
@@ -134,6 +137,9 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     Permissions.TEAM_CREATE,
     Permissions.TEAM_READ,
     Permissions.TEAM_UPDATE,
+    Permissions.TEAM_DELETE,
+    Permissions.TEAM_MEMBER_ADD,
+    Permissions.TEAM_MEMBER_REMOVE,
     Permissions.DASHBOARD_STAFF,
     Permissions.DASHBOARD_TEAM,
     Permissions.DASHBOARD_PRODUCT,

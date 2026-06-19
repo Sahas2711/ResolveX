@@ -139,7 +139,7 @@ export async function POST(request: Request) {
     }
 
     // ── 4. Revoke old token & issue new ones (atomic) ───────────────
-    const roleIds = user.userRoles.map((ur) => ur.role.id);
+    const roleIds = user.userRoles.map((ur: { role: { id: string } }) => ur.role.id);
 
     const jwtPayload: JwtUserPayload = {
       sub: user.id,
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
     const newTokenHash = hashToken(newRefreshToken);
     const newTokenExpiry = getRefreshTokenExpiry();
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: { refreshToken: { update: (args: any) => Promise<any>; create: (args: any) => Promise<any> } }) => {
       // Revoke the old token (rotation)
       await tx.refreshToken.update({
         where: { id: storedToken.id },

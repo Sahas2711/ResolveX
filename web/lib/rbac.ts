@@ -93,7 +93,7 @@ export async function getUserRoles(userId: string): Promise<string[]> {
     },
   });
 
-  return userRoles.map((ur) => ur.role.name).sort();
+  return userRoles.map((ur: { role: { name: string } }) => ur.role.name).sort();
 }
 
 // ── Authorization checks ───────────────────────────────────────────────────

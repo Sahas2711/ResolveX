@@ -1,7 +1,6 @@
 {
   "framework": "nextjs",
   "buildCommand": "prisma generate && npm run build",
-  "outputDirectory": ".next",
   "installCommand": "npm install",
 
   "headers": [
@@ -30,13 +29,5 @@
         }
       ]
     }
-  ],
-  "env": {
-    "NEXT_PUBLIC_APP_URL": "@next_public_app_url",
-    "DATABASE_URL": "@database_url",
-    "JWT_SECRET": "@jwt_secret",
-    "JWT_REFRESH_SECRET": "@jwt_refresh_secret",
-    "LOG_LEVEL": "info"
-  },
-  "crons": []
+  ]
 }
