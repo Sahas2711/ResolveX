@@ -20,6 +20,7 @@ import {
   complaintSelect,
   toComplaintResponse,
 } from "@/lib/validators/complaint";
+import { resolveBestAssignment } from "@/lib/services/auto-assignment-engine";
 
 // ── Ticket Number Generation ───────────────────────────────────────────────
 
@@ -53,124 +54,56 @@ async function generateTicketNumber(): Promise<string> {
   return `${prefix}${String(nextSeq).padStart(4, "0")}`;
 }
 
-// ── Auto-Assignment Logic ──────────────────────────────────────────────────
-
-interface AutoAssignResult {
-  assignedTeamId: string | null;
-  assignedAgentId: string | null;
-}
-
-/**
- * Attempts to auto-assign a complaint to a team based on:
- *   1. AssignmentRule — matches productId + priority (and optionally category)
- *   2. Fallback — primary ProductTeamMapping for the product
- *
- * Returns the assigned team ID and optionally an agent ID.
- */
-async function autoAssignComplaint(
-  productId: string,
-  priority: string,
-  categoryId: string,
-): Promise<AutoAssignResult> {
-  const ctx: Record<string, unknown> = { productId, priority };
-
-  try {
-    // ── Step 1: Look for exact AssignmentRule match ───────────────────
-    // Prefer rules that also match the categoryId, then fall back to
-    // rules that match only productId + priority.
-    const assignmentRule = await prisma.assignmentRule.findFirst({
-      where: {
-        productId,
-        priority: priority as any,
-        isActive: true,
-        OR: [
-          { categoryId },
-          { categoryId: null },
-        ],
-      },
-      orderBy: [
-        // Rules with a specific categoryId match rank higher
-        { categoryId: { sort: "desc", nulls: "last" } },
-      ],
-      select: { teamId: true },
-    });
-
-    if (assignmentRule) {
-      logger.info("Auto-assignment: matched AssignmentRule", {
-        ...ctx,
-        teamId: assignmentRule.teamId,
-      });
-
-      return { assignedTeamId: assignmentRule.teamId, assignedAgentId: null };
-    }
-
-    // ── Step 2: Fallback to primary ProductTeamMapping ────────────────
-    const primaryMapping = await prisma.productTeamMapping.findFirst({
-      where: {
-        productId,
-        isPrimary: true,
-      },
-      select: { teamId: true },
-      orderBy: { loadWeight: "desc" },
-    });
-
-    if (primaryMapping) {
-      logger.info("Auto-assignment: fallback to primary team mapping", {
-        ...ctx,
-        teamId: primaryMapping.teamId,
-      });
-      return { assignedTeamId: primaryMapping.teamId, assignedAgentId: null };
-    }
-
-    // ── Step 3: Any team mapping at all (least preferred) ─────────────
-    const anyMapping = await prisma.productTeamMapping.findFirst({
-      where: { productId },
-      select: { teamId: true },
-      orderBy: { loadWeight: "desc" },
-    });
-
-    if (anyMapping) {
-      logger.info("Auto-assignment: fallback to any team mapping", {
-        ...ctx,
-        teamId: anyMapping.teamId,
-      });
-      return { assignedTeamId: anyMapping.teamId, assignedAgentId: null };
-    }
-
-    logger.info("Auto-assignment: no team found — unassigned", ctx);
-    return { assignedTeamId: null, assignedAgentId: null };
-  } catch (error) {
-    logger.error("Auto-assignment: lookup failed — continuing unassigned", ctx, error);
-    return { assignedTeamId: null, assignedAgentId: null };
-  }
-}
-
 // ── Create Assignment Notification ────────────────────────────────────────
 
 async function createAssignmentNotification(
   complaintId: string,
   ticketNumber: string,
   teamId: string | null,
+  agentId?: string | null,
 ): Promise<void> {
-  if (!teamId) return;
+  if (!teamId && !agentId) return;
 
-  // Notify team members (team leads first) about the new assignment
-  const teamMembers = await prisma.teamMember.findMany({
-    where: { teamId, role: "LEAD" },
-    select: { userId: true },
-  });
+  const notifications: Array<{
+    userId: string;
+    title: string;
+    message: string;
+    type: "ASSIGNMENT";
+    referenceId: string;
+  }> = [];
 
-  if (teamMembers.length === 0) return;
+  // Notify team leads about the new assignment
+  if (teamId) {
+    const teamLeads = await prisma.teamMember.findMany({
+      where: { teamId, role: "LEAD" },
+      select: { userId: true },
+    });
 
-  await prisma.notification.createMany({
-    data: teamMembers.map((tm) => ({
-      userId: tm.userId,
-      title: "New complaint assigned",
-      message: `Complaint ${ticketNumber} has been auto-assigned to your team.`,
+    for (const tl of teamLeads) {
+      notifications.push({
+        userId: tl.userId,
+        title: "New complaint assigned to team",
+        message: `Complaint ${ticketNumber} has been assigned to your team.`,
+        type: "ASSIGNMENT",
+        referenceId: complaintId,
+      });
+    }
+  }
+
+  // Notify the assigned agent directly
+  if (agentId) {
+    notifications.push({
+      userId: agentId,
+      title: "New complaint assigned to you",
+      message: `Complaint ${ticketNumber} has been assigned to you.`,
       type: "ASSIGNMENT",
       referenceId: complaintId,
-    })),
-  });
+    });
+  }
+
+  if (notifications.length > 0) {
+    await prisma.notification.createMany({ data: notifications });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -258,8 +191,8 @@ export async function POST(request: Request) {
     const ticketNumber = await generateTicketNumber();
     ctx.ticketNumber = ticketNumber;
 
-    // ── Auto-assign team ──────────────────────────────────────────────
-    const { assignedTeamId, assignedAgentId } = await autoAssignComplaint(
+    // ── Auto-assign using the load-balanced engine ────────────────────
+    const { assignedTeamId, assignedAgentId } = await resolveBestAssignment(
       productId,
       prismaPriority,
       category.id,
@@ -319,12 +252,13 @@ export async function POST(request: Request) {
       return created;
     });
 
-    // ── Notify team leads (fire-and-forget, outside transaction) ──────
-    if (assignedTeamId) {
+    // ── Notify team leads and assigned agent (fire-and-forget) ─────────
+    if (assignedTeamId || assignedAgentId) {
       createAssignmentNotification(
         complaint.id,
         ticketNumber,
         assignedTeamId,
+        assignedAgentId,
       ).catch((err) => {
         logger.warn("Failed to send assignment notification", {
           ...ctx,
@@ -339,6 +273,7 @@ export async function POST(request: Request) {
       ticketNumber,
       status: currentStatus,
       assignedTeamId: assignedTeamId ?? undefined,
+      assignedAgentId: assignedAgentId ?? undefined,
     });
 
     return createdResponse(toComplaintResponse(complaint as any));
