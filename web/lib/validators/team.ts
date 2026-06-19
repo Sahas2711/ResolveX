@@ -130,6 +130,8 @@ export interface TeamMemberResponse {
   email: string;
   role: ApiTeamMemberRole;
   joinedAt: string;
+  /** System RBAC role names (e.g. CUSTOMER, SUPPORT_AGENT, ADMIN) */
+  roles: string[];
 }
 
 // ── Helper: Map a Prisma Team row to the API response shape ────────────────
@@ -162,6 +164,11 @@ export interface TeamMemberSelectShape {
     firstName: string;
     lastName: string;
     email: string;
+    userRoles: Array<{
+      role: {
+        name: string;
+      };
+    }>;
   };
 }
 
@@ -172,5 +179,6 @@ export function toTeamMemberResponse(member: TeamMemberSelectShape): TeamMemberR
     email: member.user.email,
     role: mapPrismaRoleToApi(member.role),
     joinedAt: member.joinedAt.toISOString(),
+    roles: member.user.userRoles.map((ur) => ur.role.name).sort(),
   };
 }
