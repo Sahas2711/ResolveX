@@ -62,9 +62,9 @@ export async function GET(request: Request) {
     }
 
     // Resolve role names and permissions
-    const roles = profile.userRoles.map((ur) => ur.role.name);
+    const roles = profile.userRoles.map((ur: { role: { name: string } }) => ur.role.name);
     const permissionSet = new Set<string>();
-    for (const ur of profile.userRoles) {
+    for (const ur of (profile.userRoles as Array<{ role: { name: string; rolePermissions: Array<{ permission: { name: string } }> } }>)) {
       for (const rp of ur.role.rolePermissions) {
         permissionSet.add(rp.permission.name);
       }

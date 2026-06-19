@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     }
 
     // ── Extract role IDs ────────────────────────────────────────────
-    const roleIds = user.userRoles.map((ur) => ur.role.id);
+    const roleIds = user.userRoles.map((ur: { role: { id: string } }) => ur.role.id);
 
     // ── Generate tokens ─────────────────────────────────────────────
     const jwtPayload: JwtUserPayload = {
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     const tokenExpiresAt = getRefreshTokenExpiry();
 
     // ── Persist refresh token & update lastLoginAt (atomic) ─────────
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: { refreshToken: { updateMany: (args: any) => Promise<any>; create: (args: any) => Promise<any> }; user: { update: (args: any) => Promise<any> } }) => {
       // Revoke any previously active refresh tokens (rotation)
       await tx.refreshToken.updateMany({
         where: { userId: user.id, revoked: false },

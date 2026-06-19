@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     // ── Create user, assign role & persist refresh token (atomic) ──
     let refreshTokenValue = "";
 
-    const user = await prisma.$transaction(async (tx) => {
+    const user = await prisma.$transaction(async (tx: { user: { create: (args: any) => Promise<any> }; userRole: { create: (args: any) => Promise<any> }; refreshToken: { create: (args: any) => Promise<any> } }) => {
       // 1. Create user
       const newUser = await tx.user.create({
         data: {
