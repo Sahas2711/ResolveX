@@ -23,6 +23,9 @@ const DESCRIPTION_MAX = 500;
 // ── Particle Background ────────────────────────────────────────────────────
 
 function ParticleField() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const particles = useMemo(
     () =>
       Array.from({ length: 18 }, (_, i) => ({
@@ -36,6 +39,8 @@ function ParticleField() {
       })),
     [],
   );
+
+  if (!mounted) return null;
 
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">

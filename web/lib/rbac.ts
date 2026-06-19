@@ -17,14 +17,9 @@ export interface AuthUser {
   roleIds: string[];
 }
 
-export interface AuthResult {
-  /** The authenticated user if the request has a verified JWT. */
-  user: AuthUser;
-  /** Whether the request meets the required permission/role checks. */
-  allowed: boolean;
-  /** A 403 Response object if `allowed` is false. */
-  response: Response | null;
-}
+export type AuthResult =
+  | { user: AuthUser; allowed: true; response: null }
+  | { user: AuthUser; allowed: false; response: Response };
 
 // ── Extract user from proxy-set headers ────────────────────────────────────
 
