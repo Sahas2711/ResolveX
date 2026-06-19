@@ -611,6 +611,43 @@ function CommentSection({
 
   useEffect(() => { fetchComments(1); }, [fetchComments]);
 
+  // ── Auto-poll new comments every 30s ────────────────────────────────
+  useEffect(() => {
+    if (error) return;
+    const interval = setInterval(() => {
+      // Silently check for new comments (just page 1, don't disrupt current view)
+      const token = getAccessToken();
+      fetch(`/api/v1/complaints/${complaintId}/comments?page=1&pageSize=20`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+        .then((r) => r.json())
+        .then((body) => {
+          const fetched = (body.data ?? []) as CommentItem[];
+          setComments((prev) => {
+            // Merge: prepend any new comments not already in the list
+            const existingIds = new Set(prev.map((c) => c.id));
+            const newOnes = fetched.filter((c) => !existingIds.has(c.id));
+            if (newOnes.length === 0) return prev;
+            return [...newOnes, ...prev];
+          });
+        })
+        .catch(() => {
+          // Silent fail — don't disrupt the UI
+        });
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [complaintId, error]);
+
+  // ── Track newest comment ID for "New" indicator ────────────────────
+  const [newestId, setNewestId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (comments.length > 0) {
+      setNewestId(comments[0].id);
+    }
+  }, [comments.length]);
+
   // ── Load more ───────────────────────────────────────────────────────
   function handleLoadMore() {
     const next = page + 1;
@@ -784,6 +821,13 @@ function CommentSection({
         {comments.length > 0 && (
           <span className="text-[10px] text-solvent/15 font-mono">({comments.length})</span>
         )}
+        {/* Live indicator */}
+        {!error && comments.length > 0 && (
+          <span className="ml-auto inline-flex items-center gap-1.5 text-[9px] font-mono tracking-wide text-solvent/20">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-phosphor/40" />
+            Live
+          </span>
+        )}
       </div>
 
       {/* ── Post error ── */}
@@ -919,13 +963,16 @@ function CommentSection({
             const isEditing = editingId === c.id;
             const isOwner = c.userId === currentUserId;
 
+            const isNewest = c.id === newestId && comments.length > 1;
+
             return (
               <div
                 key={c.id}
-                className={`group animate-fade-in rounded-2xl p-4 transition-all duration-200 ${
+                className={`group rounded-2xl p-4 transition-all duration-200 ${
                   isEditing ? "" : "hover:scale-[1.005]"
-                }`}
+                } ${isNewest ? "animate-fade-in" : "animate-fade-in"}`}
                 style={{
+                  animationDelay: isNewest ? "0ms" : `${Math.random() * 100}ms`,
                   background: c.internal
                     ? "rgba(226, 196, 152, 0.04)"
                     : "rgba(10, 14, 20, 0.3)",

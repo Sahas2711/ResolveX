@@ -210,12 +210,14 @@ export async function POST(
       referenceId: string;
     }> = [];
 
+    const commentPreview = content.length > 120 ? content.slice(0, 120) + "..." : content;
+
     // Notify assigned agent
     if (complaint.assignedAgentId && complaint.assignedAgentId !== auth.user.userId) {
       notifications.push({
         userId: complaint.assignedAgentId,
         title: "New comment on your complaint",
-        message: `New comment on ${complaint.ticketNumber}: ${content.length > 120 ? content.slice(0, 120) + "..." : content}`,
+        message: `New comment on ${complaint.ticketNumber}: ${commentPreview}`,
         type: "COMMENT",
         referenceId: complaintId,
       });
@@ -233,12 +235,23 @@ export async function POST(
           notifications.push({
             userId: tl.userId,
             title: "New comment on team complaint",
-            message: `New comment on ${complaint.ticketNumber}: ${content.length > 120 ? content.slice(0, 120) + "..." : content}`,
+            message: `New comment on ${complaint.ticketNumber}: ${commentPreview}`,
             type: "COMMENT",
             referenceId: complaintId,
           });
         }
       }
+    }
+
+    // Notify the complaint customer (for non-internal comments)
+    if (!internal && complaint.customerId && complaint.customerId !== auth.user.userId) {
+      notifications.push({
+        userId: complaint.customerId,
+        title: `Update on ${complaint.ticketNumber}`,
+        message: `A new comment was added to your complaint: ${commentPreview}`,
+        type: "COMMENT",
+        referenceId: complaintId,
+      });
     }
 
     if (notifications.length > 0) {
