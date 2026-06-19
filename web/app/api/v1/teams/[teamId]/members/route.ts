@@ -67,6 +67,13 @@ export async function GET(
             firstName: true,
             lastName: true,
             email: true,
+            userRoles: {
+              select: {
+                role: {
+                  select: { name: true },
+                },
+              },
+            },
           },
         },
       },
@@ -179,6 +186,13 @@ export async function POST(
             firstName: true,
             lastName: true,
             email: true,
+            userRoles: {
+              select: {
+                role: {
+                  select: { name: true },
+                },
+              },
+            },
           },
         },
       },

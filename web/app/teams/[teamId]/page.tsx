@@ -21,6 +21,7 @@ interface TeamMember {
   email: string;
   role: "lead" | "member";
   joinedAt: string;
+  roles: string[];
 }
 
 interface UserSearchResult {
@@ -30,6 +31,46 @@ interface UserSearchResult {
   lastName: string;
   employeeId: string;
 }
+
+// ── RBAC Role Badge Styling ────────────────────────────────────────────────
+// Maps system RBAC role names to their display label and visual theme.
+// Each role has a distinct color derived from the ResolveX palette.
+
+const ROLE_BADGE_CONFIG: Record<
+  string,
+  { label: string; color: string; bg: string; border: string }
+> = {
+  ADMIN: {
+    label: "Admin",
+    color: "var(--color-magma)",
+    bg: "rgba(255, 111, 60, 0.1)",
+    border: "1px solid rgba(255, 111, 60, 0.15)",
+  },
+  SUPPORT_AGENT: {
+    label: "Agent",
+    color: "var(--color-phosphor)",
+    bg: "rgba(200, 230, 201, 0.08)",
+    border: "1px solid rgba(200, 230, 201, 0.12)",
+  },
+  TEAM_LEAD: {
+    label: "Team Lead",
+    color: "var(--color-cosmic-dust)",
+    bg: "rgba(226, 196, 152, 0.1)",
+    border: "1px solid rgba(226, 196, 152, 0.15)",
+  },
+  PRODUCT_MANAGER: {
+    label: "PM",
+    color: "var(--color-aurora)",
+    bg: "rgba(167, 243, 208, 0.08)",
+    border: "1px solid rgba(167, 243, 208, 0.12)",
+  },
+  CUSTOMER: {
+    label: "Customer",
+    color: "rgba(240, 244, 248, 0.4)",
+    bg: "rgba(240, 244, 248, 0.04)",
+    border: "1px solid rgba(240, 244, 248, 0.06)",
+  },
+};
 
 // ── Particle Field ─────────────────────────────────────────────────────────
 
@@ -854,7 +895,7 @@ export default function TeamDetailPage() {
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <p className="truncate text-sm font-medium text-solvent/70">{member.userName}</p>
                             {member.role === "lead" && (
                               <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase"
@@ -863,6 +904,24 @@ export default function TeamDetailPage() {
                                 Lead
                               </span>
                             )}
+                            {/* ── System RBAC role badges ── */}
+                            {member.roles.map((roleName) => {
+                              const badge = ROLE_BADGE_CONFIG[roleName];
+                              if (!badge) return null;
+                              return (
+                                <span
+                                  key={roleName}
+                                  className="inline-flex rounded-full px-2 py-0.5 text-[9px] font-mono tracking-wider"
+                                  style={{
+                                    background: badge.bg,
+                                    color: badge.color,
+                                    border: badge.border,
+                                  }}
+                                >
+                                  {badge.label}
+                                </span>
+                              );
+                            })}
                           </div>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             <p className="truncate text-xs text-solvent/25 font-mono">{member.email}</p>
