@@ -14,6 +14,17 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
+    label: "Dashboard",
+    href: "/dashboard",
+    color: "var(--color-phosphor)",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M3 3v18h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M7 16l4-6 4 4 4-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     label: "Complaints",
     href: "/complaints",
     color: "var(--color-phosphor)",
