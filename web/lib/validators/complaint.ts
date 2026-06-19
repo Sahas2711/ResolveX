@@ -109,6 +109,29 @@ export const createComplaintSchema = z.object({
 
 export type CreateComplaintInput = z.infer<typeof createComplaintSchema>;
 
+// ── Update Complaint Schema ────────────────────────────────────────────────
+// API spec: PUT /complaints/{complaintId}
+// { priority?, severity?, description?, category? } — all optional
+
+export const updateComplaintSchema = z.object({
+  priority: ApiPriority.optional(),
+  severity: ApiSeverity.optional(),
+  description: z
+    .string()
+    .min(20, "Description must be at least 20 characters")
+    .max(5000, "Description must be at most 5000 characters")
+    .trim()
+    .optional(),
+  category: z
+    .string()
+    .min(1, "Category is required")
+    .max(100, "Category must be at most 100 characters")
+    .trim()
+    .optional(),
+});
+
+export type UpdateComplaintInput = z.infer<typeof updateComplaintSchema>;
+
 // ── Complaint Response Shape (matches API spec Complaint schema) ───────────
 
 export interface ComplaintResponse {
