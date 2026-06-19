@@ -1,0 +1,323 @@
+"use client";
+
+import { useState, useEffect, useMemo, useRef, type FormEvent, type ChangeEvent } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { getAccessToken, useAuth } from "@/hooks/useAuth";
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface FieldErrors {
+  name?: string;
+  email?: string;
+}
+
+interface ServerError {
+  code: string;
+  message: string;
+}
+
+// ── Particle Field ─────────────────────────────────────────────────────────
+
+function ParticleField() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const particles = useMemo(() =>
+    Array.from({ length: 12 }, (_, i) => ({
+      id: i, x: `${Math.random() * 100}%`, y: `${Math.random() * 100}%`,
+      size: 1.2 + Math.random() * 2, delay: Math.random() * 8,
+      duration: 5 + Math.random() * 7, dx: `${-30 + Math.random() * 60}px`,
+    })), []
+  );
+
+  if (!mounted) return null;
+
+  return (
+    <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+      {particles.map((p) => (
+        <div key={p.id} className="absolute rounded-full bg-phosphor"
+          style={{
+            width: p.size, height: p.size, left: p.x, top: p.y, opacity: 0,
+            animation: `particle-float ${p.duration}s ease-out ${p.delay}s infinite`,
+            "--dx": p.dx, boxShadow: `0 0 ${p.size * 3}px rgba(200, 230, 201, 0.25)`,
+          } as React.CSSProperties}
+        />
+      ))}
+      <div className="absolute -top-[30%] -right-[20%] h-[60%] w-[40%] rounded-full opacity-[0.04]"
+        style={{ background: "radial-gradient(ellipse, rgba(226, 196, 152, 0.4) 0%, transparent 70%)", filter: "blur(100px)", animation: "drift 16s ease-in-out infinite" }}
+      />
+    </div>
+  );
+}
+
+// ── Field Error ────────────────────────────────────────────────────────────
+
+function FieldError({ message }: { message: string }) {
+  if (!message) return null;
+  return <p className="mt-1.5 animate-slide-up text-[12px] font-medium text-magma">{message}</p>;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN EDIT USER PAGE
+// ═══════════════════════════════════════════════════════════════════════════
+
+export default function EditUserPage() {
+  const router = useRouter();
+  const params = useParams();
+  const userId = params.userId as string;
+  const auth = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = auth;
+
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [originalName, setOriginalName] = useState("");
+  const [originalEmail, setOriginalEmail] = useState("");
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [serverError, setServerError] = useState<ServerError | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  // ── Fetch user data ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !userId) return;
+    (async () => {
+      setIsLoadingUser(true);
+      try {
+        const token = getAccessToken();
+        const res = await fetch(`/api/v1/users/${userId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.status === 404) { setLoadError("User not found"); return; }
+        if (!res.ok) throw new Error("Failed to fetch");
+        const body = await res.json();
+        const user = body.data;
+        if (user) {
+          setName(user.name);
+          setEmail(user.email);
+          setOriginalName(user.name);
+          setOriginalEmail(user.email);
+          setTimeout(() => nameRef.current?.focus(), 100);
+        }
+      } catch { setLoadError("Failed to load user"); } finally { setIsLoadingUser(false); }
+    })();
+  }, [userId, authLoading, isAuthenticated]);
+
+  // ── Validation ───────────────────────────────────────────────────────────
+  function validate(): FieldErrors {
+    const errors: FieldErrors = {};
+    const trimmedName = name.trim();
+    if (!trimmedName) errors.name = "Name is required";
+    else if (trimmedName.length > 150) errors.name = "Name must be at most 150 characters";
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) errors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) errors.email = "Invalid email address";
+    return errors;
+  }
+
+  // ── Submit ───────────────────────────────────────────────────────────────
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setServerError(null);
+    const errors = validate();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const token = getAccessToken();
+      const body: Record<string, unknown> = {};
+      if (name.trim() !== originalName) body.name = name.trim();
+      if (email.trim().toLowerCase() !== originalEmail.toLowerCase()) body.email = email.trim();
+
+      if (Object.keys(body).length === 0) {
+        setIsSuccess(true);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const res = await fetch(`/api/v1/users/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        if (res.status === 422 && data?.error?.details) {
+          const serverFieldErrors: FieldErrors = {};
+          for (const d of data.error.details) {
+            if (d.field === "name") serverFieldErrors.name = d.message;
+            if (d.field === "email") serverFieldErrors.email = d.message;
+          }
+          if (Object.keys(serverFieldErrors).length > 0) { setFieldErrors(serverFieldErrors); setIsSubmitting(false); return; }
+        }
+        setServerError({
+          code: data?.error?.code ?? "UNKNOWN",
+          message: data?.error?.message ?? (res.status === 409 ? "A user with this email already exists." : "Failed to update user."),
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      setIsSuccess(true);
+    } catch { setServerError({ code: "NETWORK_ERROR", message: "Unable to connect to the server." }); }
+    finally { setIsSubmitting(false); }
+  }
+
+  // ── Field change ─────────────────────────────────────────────────────────
+  function handleFieldChange(field: keyof FieldErrors, setter: (v: string) => void) {
+    return (e: ChangeEvent<HTMLInputElement>) => {
+      setter(e.target.value);
+      if (fieldErrors[field]) setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+      if (serverError) setServerError(null);
+    };
+  }
+
+  // ── Auth gate ────────────────────────────────────────────────────────────
+  useEffect(() => { if (!authLoading && !isAuthenticated) router.push("/login"); }, [authLoading, isAuthenticated, router]);
+
+  if (authLoading) return <main className="flex min-h-dvh items-center justify-center"><span className="spinner-ring" /></main>;
+  if (!isAuthenticated) return null;
+
+  // ── Success view ─────────────────────────────────────────────────────────
+  if (isSuccess) {
+    return (
+      <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-4">
+        <ParticleField />
+        <div className="animate-slide-up flex flex-col items-center gap-8 text-center">
+          <div className="relative">
+            <div className="h-20 w-20 animate-float rounded-full"
+              style={{ background: "radial-gradient(circle, rgba(167, 243, 208, 0.25), transparent 70%)", boxShadow: "0 0 60px rgba(167, 243, 208, 0.15)" }}
+            />
+            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+              <path d="M24 42l10 10 22-24" stroke="rgba(167, 243, 208, 0.8)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ strokeDasharray: 60, strokeDashoffset: 0, animation: "fade-in 0.6s ease-out 0.3s both" }} />
+            </svg>
+          </div>
+          <div className="max-w-xs">
+            <h1 className="font-serif text-3xl italic leading-tight text-aurora">User updated.</h1>
+            <p className="mt-3 text-sm leading-relaxed text-solvent/50">Changes to &ldquo;{name.trim()}&rdquo; have been saved.</p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button onClick={() => router.push(`/users/${userId}`)} className="btn-phosphor rounded-full px-6 py-3 text-sm">View user</button>
+            <button onClick={() => router.push("/users")} className="btn-phosphor rounded-full px-6 py-3 text-sm"
+              style={{ background: "linear-gradient(135deg, rgba(200, 230, 201, 0.18), rgba(200, 230, 201, 0.1))" }}>
+              All users
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Form ─────────────────────────────────────────────────────────────────
+  return (
+    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-4 py-12">
+      <ParticleField />
+
+      <div className="pointer-events-none fixed top-1/2 left-1/2 h-[70vmin] w-[70vmin] -translate-x-1/2 -translate-y-1/2 animate-pulse-glow rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(226, 196, 152, 0.04) 0%, transparent 60%)" }}
+        aria-hidden="true"
+      />
+
+      <div className="relative w-full max-w-[480px] animate-fade-in rounded-[2.5rem] px-6 py-10 sm:px-10 sm:py-14"
+        style={{
+          background: "linear-gradient(135deg, rgba(19, 26, 36, 0.75), rgba(26, 31, 40, 0.65))",
+          backdropFilter: "blur(32px) saturate(0.8)",
+          border: "1px solid rgba(226, 196, 152, 0.06)",
+        }}
+      >
+        <div className="pointer-events-none absolute -top-px left-[20%] right-[20%] h-px"
+          style={{ background: "linear-gradient(90deg, transparent 0%, rgba(226, 196, 152, 0.15) 50%, transparent 100%)" }}
+          aria-hidden="true"
+        />
+
+        <button onClick={() => router.push(`/users/${userId}`)}
+          className="mb-6 flex items-center gap-1.5 text-xs text-solvent/25 transition-colors hover:text-phosphor">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Back
+        </button>
+
+        <div className="mb-8 text-center">
+          <h1 className="text-2xl font-medium tracking-tight text-solvent sm:text-3xl">Edit User</h1>
+          <p className="mt-1 text-sm text-solvent/40">Update the user&apos;s name and email address.</p>
+        </div>
+
+        {loadError ? (
+          <div className="flex flex-col items-center gap-4 py-8 text-center">
+            <p className="text-sm text-magma">{loadError}</p>
+            <button onClick={() => router.push("/users")} className="btn-phosphor rounded-full px-5 py-2 text-sm">Back to users</button>
+          </div>
+        ) : isLoadingUser ? (
+          <div className="flex justify-center py-12"><span className="spinner-ring" /></div>
+        ) : (
+          <>
+            {serverError && (
+              <div className="mb-6 animate-slide-up rounded-2xl px-4 py-3 text-sm"
+                style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.12)", color: "var(--color-magma)" }} role="alert"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: "var(--color-magma)", boxShadow: "0 0 6px rgba(255, 111, 60, 0.4)" }}
+                  />
+                  <span>{serverError.message}</span>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} noValidate className="space-y-7">
+              {/* Name */}
+              <div className="floating-label">
+                <input ref={nameRef} id="name" type="text" autoComplete="off" placeholder=" "
+                  value={name} onChange={handleFieldChange("name", setName)} disabled={isSubmitting}
+                  className={`input-plasma w-full pb-2 pt-3 text-[15px] ${fieldErrors.name ? "error" : ""} ${name ? "filled" : ""}`}
+                />
+                <label htmlFor="name">Full name</label>
+                <FieldError message={fieldErrors.name ?? ""} />
+              </div>
+
+              {/* Email */}
+              <div className="floating-label">
+                <input id="email" type="email" autoComplete="off" placeholder=" "
+                  value={email} onChange={handleFieldChange("email", setEmail)} disabled={isSubmitting}
+                  className={`input-plasma w-full pb-2 pt-3 text-[15px] ${fieldErrors.email ? "error" : ""} ${email ? "filled" : ""}`}
+                />
+                <label htmlFor="email">Email address</label>
+                <FieldError message={fieldErrors.email ?? ""} />
+              </div>
+
+              {/* Submit */}
+              <div className="pt-4">
+                <button type="submit" disabled={isSubmitting}
+                  className="btn-phosphor flex w-full items-center justify-center gap-3 rounded-full py-3.5 text-[15px]"
+                >
+                  {isSubmitting ? (
+                    <><span className="spinner-ring" /><span className="text-phosphor/60">Saving changes...</span></>
+                  ) : (
+                    <span className="tracking-wide">Save changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+
+      <div className="pointer-events-none fixed bottom-0 left-1/2 h-32 w-[80vmin] -translate-x-1/2"
+        style={{ background: "radial-gradient(ellipse at center, rgba(226, 196, 152, 0.04) 0%, transparent 70%)", filter: "blur(40px)" }}
+        aria-hidden="true"
+      />
+    </main>
+  );
+}
