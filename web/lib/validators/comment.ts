@@ -20,6 +20,20 @@ export const createCommentSchema = z.object({
 
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;
 
+// ── Edit Comment Schema ────────────────────────────────────────────────────
+// PATCH /complaints/{complaintId}/comments/{commentId}
+// { content: string }
+
+export const editCommentSchema = z.object({
+  content: z
+    .string()
+    .min(1, "Comment cannot be empty")
+    .max(2000, "Comment must be at most 2000 characters")
+    .trim(),
+});
+
+export type EditCommentInput = z.infer<typeof editCommentSchema>;
+
 // ── Comment Response Shape ─────────────────────────────────────────────────
 
 export interface CommentResponse {
@@ -29,7 +43,9 @@ export interface CommentResponse {
   userName: string;
   content: string;
   internal: boolean;
+  isEdited: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 // ── Prisma Select Shape ────────────────────────────────────────────────────
@@ -40,7 +56,9 @@ export interface CommentSelectShape {
   userId: string;
   content: string;
   isInternal: boolean;
+  isEdited: boolean;
   createdAt: Date;
+  updatedAt: Date;
   user: {
     firstName: string;
     lastName: string;
@@ -57,7 +75,9 @@ export function toCommentResponse(comment: CommentSelectShape): CommentResponse 
     userName: `${comment.user.firstName} ${comment.user.lastName}`,
     content: comment.content,
     internal: comment.isInternal,
+    isEdited: comment.isEdited,
     createdAt: comment.createdAt.toISOString(),
+    updatedAt: comment.updatedAt.toISOString(),
   };
 }
 
@@ -69,7 +89,9 @@ export const commentSelect = {
   userId: true,
   content: true,
   isInternal: true,
+  isEdited: true,
   createdAt: true,
+  updatedAt: true,
   user: {
     select: {
       firstName: true,

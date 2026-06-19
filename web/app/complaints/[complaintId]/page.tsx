@@ -37,7 +37,9 @@ interface CommentItem {
   userName: string;
   content: string;
   internal: boolean;
+  isEdited: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 // ── Status config ──────────────────────────────────────────────────────────
@@ -449,15 +451,122 @@ function EditableField({ label, value, isEditing, children }: {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DELETE CONFIRMATION MODAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+function DeleteConfirmModal({
+  complaintId, commentId, onClose, onDeleted,
+}: {
+  complaintId: string;
+  commentId: string;
+  onClose: () => void;
+  onDeleted: (commentId: string) => void;
+}) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDelete() {
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`/api/v1/complaints/${complaintId}/comments/${commentId}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      // We need complaintId from context — use the parent's
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setError(json?.error?.message ?? "Failed to delete comment");
+        return;
+      }
+      onDeleted(commentId);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(8px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-sm animate-slide-up rounded-[2rem] p-6"
+        style={{
+          background: "linear-gradient(135deg, rgba(19, 26, 36, 0.95), rgba(26, 31, 40, 0.9))",
+          border: "1px solid rgba(255, 111, 60, 0.08)",
+          backdropFilter: "blur(32px)",
+        }}
+      >
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                stroke="rgba(255, 111, 60, 0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"
+              />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-solvent/80">Delete comment</h3>
+            <p className="text-[11px] text-solvent/30 mt-0.5">This action cannot be undone.</p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-2xl px-3 py-2 text-xs"
+            style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)", color: "var(--color-magma)" }}
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 rounded-full px-4 py-2.5 text-xs font-medium transition-all"
+            style={{ background: "rgba(240, 244, 248, 0.04)", color: "rgba(240, 244, 248, 0.4)" }}
+          >
+            Cancel
+          </button>
+          <button onClick={handleDelete} disabled={isDeleting}
+            className="flex-1 rounded-full px-4 py-2.5 text-xs font-medium transition-all"
+            style={{
+              background: "rgba(255, 111, 60, 0.12)",
+              color: "var(--color-magma)",
+              opacity: isDeleting ? 0.6 : 1,
+            }}
+          >
+            {isDeleting ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border border-magma border-t-transparent" />
+                Deleting...
+              </span>
+            ) : (
+              "Delete"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // COMMENT SECTION
 // ═══════════════════════════════════════════════════════════════════════════
 
 function CommentSection({
   complaintId,
   canComment,
+  currentUserId,
 }: {
   complaintId: string;
   canComment: boolean;
+  currentUserId: string;
 }) {
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -468,6 +577,15 @@ function CommentSection({
   const [isInternal, setIsInternal] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Delete state
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // ── Fetch comments ──────────────────────────────────────────────────
   const fetchComments = useCallback(async (pageNum: number, append = false) => {
@@ -574,6 +692,75 @@ function CommentSection({
     }
     const hue = Math.abs(hash) % 360;
     return `hsl(${hue}, 40%, 55%)`;
+  }
+
+  // ── Edit handlers ─────────────────────────────────────────────────
+  function handleStartEdit(c: CommentItem) {
+    setEditingId(c.id);
+    setEditContent(c.content);
+    setEditError(null);
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null);
+    setEditContent("");
+    setEditError(null);
+  }
+
+  async function handleSaveEdit() {
+    if (!editingId) return;
+    const trimmed = editContent.trim();
+    if (!trimmed) return;
+
+    setIsSavingEdit(true);
+    setEditError(null);
+
+    try {
+      const token = getAccessToken();
+      const res = await fetch(
+        `/api/v1/complaints/${complaintId}/comments/${editingId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ content: trimmed }),
+        },
+      );
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setEditError(json?.error?.message ?? "Failed to edit comment");
+        return;
+      }
+
+      const body = await res.json();
+      const updated = body.data as CommentItem;
+      setComments((prev) => prev.map((c) => (c.id === editingId ? updated : c)));
+      setEditingId(null);
+      setEditContent("");
+    } catch {
+      setEditError("Network error. Please try again.");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  }
+
+  function handleEditKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSaveEdit();
+    }
+    if (e.key === "Escape") {
+      handleCancelEdit();
+    }
+  }
+
+  // ── Delete handler ─────────────────────────────────────────────────
+  function handleDeleteSuccess(commentId: string) {
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+    setDeletingId(null);
   }
 
   // ── Key handler for textarea ────────────────────────────────────────
@@ -728,67 +915,156 @@ function CommentSection({
       {/* ── Comment list ── */}
       {comments.length > 0 && (
         <div className="space-y-2.5">
-          {comments.map((c) => (
-            <div
-              key={c.id}
-              className="group animate-fade-in rounded-2xl p-4 transition-all duration-200 hover:scale-[1.005]"
-              style={{
-                background: c.internal
-                  ? "rgba(226, 196, 152, 0.04)"
-                  : "rgba(10, 14, 20, 0.3)",
-                border: c.internal
-                  ? "1px solid rgba(226, 196, 152, 0.06)"
-                  : "1px solid rgba(200, 230, 201, 0.03)",
-              }}
-            >
-              <div className="flex items-start gap-3">
-                {/* Avatar */}
-                <div
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tracking-wide uppercase"
-                  style={{
-                    background: `${avatarColor(c.userName)}22`,
-                    color: avatarColor(c.userName),
-                    border: `1px solid ${avatarColor(c.userName)}33`,
-                  }}
-                >
-                  {getInitials(c.userName)}
-                </div>
+          {comments.map((c) => {
+            const isEditing = editingId === c.id;
+            const isOwner = c.userId === currentUserId;
 
-                <div className="min-w-0 flex-1">
-                  {/* Header row */}
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-[12px] font-medium text-solvent/70">
-                      {c.userName}
-                    </span>
-                    <span className="text-[10px] text-solvent/20 font-mono">
-                      {formatTime(c.createdAt)}
-                    </span>
-                    {c.internal && (
-                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-medium tracking-wide uppercase"
-                        style={{
-                          background: "rgba(226, 196, 152, 0.08)",
-                          border: "1px solid rgba(226, 196, 152, 0.1)",
-                          color: "var(--color-cosmic-dust)",
-                        }}
-                      >
-                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
-                            stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"
-                          />
-                        </svg>
-                        Internal
-                      </span>
-                    )}
+            return (
+              <div
+                key={c.id}
+                className={`group animate-fade-in rounded-2xl p-4 transition-all duration-200 ${
+                  isEditing ? "" : "hover:scale-[1.005]"
+                }`}
+                style={{
+                  background: c.internal
+                    ? "rgba(226, 196, 152, 0.04)"
+                    : "rgba(10, 14, 20, 0.3)",
+                  border: isEditing
+                    ? "1px solid rgba(200, 230, 201, 0.12)"
+                    : c.internal
+                      ? "1px solid rgba(226, 196, 152, 0.06)"
+                      : "1px solid rgba(200, 230, 201, 0.03)",
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Avatar */}
+                  <div
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tracking-wide uppercase"
+                    style={{
+                      background: `${avatarColor(c.userName)}22`,
+                      color: avatarColor(c.userName),
+                      border: `1px solid ${avatarColor(c.userName)}33`,
+                    }}
+                  >
+                    {getInitials(c.userName)}
                   </div>
 
-                  {/* Content */}
-                  <p className="text-[13px] leading-relaxed text-solvent/50 whitespace-pre-wrap break-words">
-                    {c.content}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    {/* Header row */}
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-[12px] font-medium text-solvent/70">
+                        {c.userName}
+                      </span>
+                      <span className="text-[10px] text-solvent/20 font-mono">
+                        {formatTime(c.createdAt)}
+                      </span>
+                      {c.isEdited && (
+                        <span className="text-[9px] italic text-solvent/25 font-mono">(edited)</span>
+                      )}
+                      {c.internal && (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-medium tracking-wide uppercase"
+                          style={{
+                            background: "rgba(226, 196, 152, 0.08)",
+                            border: "1px solid rgba(226, 196, 152, 0.1)",
+                            color: "var(--color-cosmic-dust)",
+                          }}
+                        >
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                              stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"
+                            />
+                          </svg>
+                          Internal
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Content or Edit inline */}
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          onKeyDown={handleEditKeyDown}
+                          className="w-full resize-none rounded-xl bg-bathyal/20 px-3 py-2 text-[13px] leading-relaxed text-solvent/70 placeholder:text-solvent/20 focus:outline-none focus:ring-1 focus:ring-phosphor/20"
+                          rows={3}
+                          maxLength={2000}
+                          autoFocus
+                        />
+                        {editError && (
+                          <p className="text-[11px] text-magma">{editError}</p>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-solvent/20 font-mono">
+                            {editContent.length}/2000
+                          </span>
+                          <div className="flex gap-1.5">
+                            <button onClick={handleCancelEdit}
+                              className="rounded-full px-3 py-1 text-[10px] font-medium text-solvent/40 transition-all hover:text-solvent/70"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleSaveEdit}
+                              disabled={isSavingEdit || !editContent.trim()}
+                              className="rounded-full px-3 py-1 text-[10px] font-medium transition-all disabled:opacity-30"
+                              style={{
+                                background: "rgba(200, 230, 201, 0.12)",
+                                color: "var(--color-phosphor)",
+                              }}
+                            >
+                              {isSavingEdit ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-phosphor border-t-transparent" />
+                                  Saving
+                                </span>
+                              ) : (
+                                "Save"
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-[13px] leading-relaxed text-solvent/50 whitespace-pre-wrap break-words">
+                          {c.content}
+                        </p>
+
+                        {/* Action buttons */}
+                        {isOwner && (
+                          <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                            <button
+                              onClick={() => handleStartEdit(c)}
+                              className="rounded-full p-1.5 transition-all hover:bg-white/5"
+                              title="Edit comment"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                                  stroke="rgba(240, 244, 248, 0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setDeletingId(c.id)}
+                              className="rounded-full p-1.5 transition-all hover:bg-white/5"
+                              title="Delete comment"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                                  stroke="rgba(240, 244, 248, 0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -815,6 +1091,16 @@ function CommentSection({
             )}
           </button>
         </div>
+      )}
+
+      {/* ── Delete confirmation modal ── */}
+      {deletingId && (
+        <DeleteConfirmModal
+          complaintId={complaintId}
+          commentId={deletingId}
+          onClose={() => setDeletingId(null)}
+          onDeleted={handleDeleteSuccess}
+        />
       )}
     </div>
   );
@@ -1385,7 +1671,7 @@ export default function ComplaintDetailPage() {
               </div>
 
               {/* ── Comment Section ── */}
-              <CommentSection complaintId={complaintId} canComment={canComment} />
+              <CommentSection complaintId={complaintId} canComment={canComment} currentUserId={auth.user?.userId ?? ""} />
             </div>
           </>
         ) : null}
