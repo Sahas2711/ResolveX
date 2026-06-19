@@ -30,6 +30,18 @@ interface Complaint {
   closedAt: string | null;
 }
 
+interface CommentItem {
+  id: string;
+  complaintId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  internal: boolean;
+  isEdited: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Status config ──────────────────────────────────────────────────────────
 
 const STATUS_NODES: Array<{
@@ -60,9 +72,7 @@ interface UITransition {
 }
 
 const TRANSITIONS_BY_STATUS: Record<string, UITransition[]> = {
-  open: [
-    // Assign flows through the dedicated assign endpoint; no inline modal
-  ],
+  open: [],
   assigned: [
     { id: "start", label: "Start Work", endpoint: "/status", remarksLabel: "", remarksRequired: false, remarksMaxLength: 0, buttonClass: "btn-work" },
     { id: "escalate", label: "Escalate", endpoint: "/escalate", remarksLabel: "Escalation reason", remarksRequired: true, remarksMaxLength: 500, buttonClass: "" },
@@ -150,11 +160,9 @@ function ParticleField() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function StatusFlowDiagram({ currentStatus }: { currentStatus: string }) {
-  // Only show the "main path" statuses in the flow
   const flowStatuses = ["open", "assigned", "in_progress", "resolved", "closed"];
   const flowIndex = flowStatuses.indexOf(currentStatus);
 
-  // Special statuses displayed as side nodes
   const isWaiting = currentStatus === "waiting_for_customer";
   const isReopened = currentStatus === "reopened";
   const isEscalated = currentStatus === "escalated";
@@ -179,7 +187,6 @@ function StatusFlowDiagram({ currentStatus }: { currentStatus: string }) {
 
             return (
               <div key={s} className="flex items-center">
-                {/* Node */}
                 <div className="flex flex-col items-center gap-1.5">
                   <div
                     className={`relative flex h-8 w-8 items-center justify-center rounded-full transition-all duration-500 ${
@@ -220,7 +227,6 @@ function StatusFlowDiagram({ currentStatus }: { currentStatus: string }) {
                   </span>
                 </div>
 
-                {/* Connector line */}
                 {idx < flowStatuses.length - 1 && (
                   <div
                     className={`mx-1.5 h-px w-6 transition-all duration-500 ${
@@ -235,10 +241,9 @@ function StatusFlowDiagram({ currentStatus }: { currentStatus: string }) {
                 )}
               </div>
             );
-          }      )}
+          })}
         </div>
 
-        {/* Side status indicators for waiting/reopened/escalated */}
         {(isWaiting || isReopened || isEscalated) && (
           <div className="mt-3 flex flex-wrap gap-2">
             {isWaiting && (
@@ -314,9 +319,6 @@ function TransitionModal({
         body.reason = remarks;
       } else if (transition.endpoint === "/escalate") {
         body.reason = remarks;
-      } else if (transition.endpoint === "/escalate") {
-        body.reason = remarks;
-        // Use default escalation level (L1) — can be extended later
       }
 
       const res = await fetch(`/api/v1/complaints/${complaintId}${transition.endpoint}`, {
@@ -449,6 +451,709 @@ function EditableField({ label, value, isEditing, children }: {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DELETE CONFIRMATION MODAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+function DeleteConfirmModal({
+  complaintId, commentId, onClose, onDeleted,
+}: {
+  complaintId: string;
+  commentId: string;
+  onClose: () => void;
+  onDeleted: (commentId: string) => void;
+}) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDelete() {
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`/api/v1/complaints/${complaintId}/comments/${commentId}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      // We need complaintId from context — use the parent's
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setError(json?.error?.message ?? "Failed to delete comment");
+        return;
+      }
+      onDeleted(commentId);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(8px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-sm animate-slide-up rounded-[2rem] p-6"
+        style={{
+          background: "linear-gradient(135deg, rgba(19, 26, 36, 0.95), rgba(26, 31, 40, 0.9))",
+          border: "1px solid rgba(255, 111, 60, 0.08)",
+          backdropFilter: "blur(32px)",
+        }}
+      >
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                stroke="rgba(255, 111, 60, 0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"
+              />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-solvent/80">Delete comment</h3>
+            <p className="text-[11px] text-solvent/30 mt-0.5">This action cannot be undone.</p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-2xl px-3 py-2 text-xs"
+            style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)", color: "var(--color-magma)" }}
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 rounded-full px-4 py-2.5 text-xs font-medium transition-all"
+            style={{ background: "rgba(240, 244, 248, 0.04)", color: "rgba(240, 244, 248, 0.4)" }}
+          >
+            Cancel
+          </button>
+          <button onClick={handleDelete} disabled={isDeleting}
+            className="flex-1 rounded-full px-4 py-2.5 text-xs font-medium transition-all"
+            style={{
+              background: "rgba(255, 111, 60, 0.12)",
+              color: "var(--color-magma)",
+              opacity: isDeleting ? 0.6 : 1,
+            }}
+          >
+            {isDeleting ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border border-magma border-t-transparent" />
+                Deleting...
+              </span>
+            ) : (
+              "Delete"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMMENT SECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+function CommentSection({
+  complaintId,
+  canComment,
+  currentUserId,
+}: {
+  complaintId: string;
+  canComment: boolean;
+  currentUserId: string;
+}) {
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [content, setContent] = useState("");
+  const [isInternal, setIsInternal] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Delete state
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // ── Fetch comments ──────────────────────────────────────────────────
+  const fetchComments = useCallback(async (pageNum: number, append = false) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(
+        `/api/v1/complaints/${complaintId}/comments?page=${pageNum}&pageSize=20`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+      );
+      if (!res.ok) throw new Error("Failed to fetch comments");
+      const body = await res.json();
+      const fetched = (body.data ?? []) as CommentItem[];
+      setComments((prev) => (append ? [...prev, ...fetched] : fetched));
+      setHasMore(body.meta ? pageNum < (body.meta.totalPages ?? 1) : false);
+    } catch {
+      setError("Failed to load comments");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [complaintId]);
+
+  useEffect(() => { fetchComments(1); }, [fetchComments]);
+
+  // ── Auto-poll new comments every 30s ────────────────────────────────
+  useEffect(() => {
+    if (error) return;
+    const interval = setInterval(() => {
+      // Silently check for new comments (just page 1, don't disrupt current view)
+      const token = getAccessToken();
+      fetch(`/api/v1/complaints/${complaintId}/comments?page=1&pageSize=20`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+        .then((r) => r.json())
+        .then((body) => {
+          const fetched = (body.data ?? []) as CommentItem[];
+          setComments((prev) => {
+            // Merge: prepend any new comments not already in the list
+            const existingIds = new Set(prev.map((c) => c.id));
+            const newOnes = fetched.filter((c) => !existingIds.has(c.id));
+            if (newOnes.length === 0) return prev;
+            return [...newOnes, ...prev];
+          });
+        })
+        .catch(() => {
+          // Silent fail — don't disrupt the UI
+        });
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [complaintId, error]);
+
+  // ── Track newest comment ID for "New" indicator ────────────────────
+  const [newestId, setNewestId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (comments.length > 0) {
+      setNewestId(comments[0].id);
+    }
+  }, [comments.length]);
+
+  // ── Load more ───────────────────────────────────────────────────────
+  function handleLoadMore() {
+    const next = page + 1;
+    setPage(next);
+    fetchComments(next, true);
+  }
+
+  // ── Post a comment ──────────────────────────────────────────────────
+  async function handlePost() {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+
+    setIsPosting(true);
+    setPostError(null);
+
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`/api/v1/complaints/${complaintId}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ content: trimmed, internal: isInternal }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setPostError(json?.error?.message ?? "Failed to post comment");
+        return;
+      }
+
+      const body = await res.json();
+      const newComment = body.data as CommentItem;
+      setComments((prev) => [newComment, ...prev]);
+      setContent("");
+      setIsInternal(false);
+    } catch {
+      setPostError("Network error. Please try again.");
+    } finally {
+      setIsPosting(false);
+    }
+  }
+
+  // ── Format timestamp ────────────────────────────────────────────────
+  function formatTime(iso: string): string {
+    const dt = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - dt.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+
+    const diffDays = Math.floor(diffHrs / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  // ── Get initials from name ──────────────────────────────────────────
+  function getInitials(name: string): string {
+    return name
+      .split(" ")
+      .map((part) => part.charAt(0))
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  }
+
+  // ── Comment color from name (deterministic hue) ─────────────────────
+  function avatarColor(name: string): string {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 40%, 55%)`;
+  }
+
+  // ── Edit handlers ─────────────────────────────────────────────────
+  function handleStartEdit(c: CommentItem) {
+    setEditingId(c.id);
+    setEditContent(c.content);
+    setEditError(null);
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null);
+    setEditContent("");
+    setEditError(null);
+  }
+
+  async function handleSaveEdit() {
+    if (!editingId) return;
+    const trimmed = editContent.trim();
+    if (!trimmed) return;
+
+    setIsSavingEdit(true);
+    setEditError(null);
+
+    try {
+      const token = getAccessToken();
+      const res = await fetch(
+        `/api/v1/complaints/${complaintId}/comments/${editingId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ content: trimmed }),
+        },
+      );
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setEditError(json?.error?.message ?? "Failed to edit comment");
+        return;
+      }
+
+      const body = await res.json();
+      const updated = body.data as CommentItem;
+      setComments((prev) => prev.map((c) => (c.id === editingId ? updated : c)));
+      setEditingId(null);
+      setEditContent("");
+    } catch {
+      setEditError("Network error. Please try again.");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  }
+
+  function handleEditKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSaveEdit();
+    }
+    if (e.key === "Escape") {
+      handleCancelEdit();
+    }
+  }
+
+  // ── Delete handler ─────────────────────────────────────────────────
+  function handleDeleteSuccess(commentId: string) {
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+    setDeletingId(null);
+  }
+
+  // ── Key handler for textarea ────────────────────────────────────────
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handlePost();
+    }
+  }
+
+  return (
+    <div className="mt-8 pt-6" style={{ borderTop: "1px solid rgba(200, 230, 201, 0.06)" }}>
+      {/* ── Header ── */}
+      <div className="mb-5 flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"
+            stroke="rgba(200, 230, 201, 0.3)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"
+          />
+        </svg>
+        <span className="text-[11px] font-medium tracking-wider text-solvent/20 uppercase">Comments</span>
+        {comments.length > 0 && (
+          <span className="text-[10px] text-solvent/15 font-mono">({comments.length})</span>
+        )}
+        {/* Live indicator */}
+        {!error && comments.length > 0 && (
+          <span className="ml-auto inline-flex items-center gap-1.5 text-[9px] font-mono tracking-wide text-solvent/20">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-phosphor/40" />
+            Live
+          </span>
+        )}
+      </div>
+
+      {/* ── Post error ── */}
+      {postError && (
+        <div className="mb-4 rounded-2xl px-3 py-2 text-xs"
+          style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)", color: "var(--color-magma)" }}
+          role="alert"
+        >
+          {postError}
+        </div>
+      )}
+
+      {/* ── Post form ── */}
+      {canComment && (
+        <div
+          className="mb-6 rounded-2xl p-4 transition-all duration-200 focus-within:shadow-lg"
+          style={{
+            background: "rgba(10, 14, 20, 0.4)",
+            border: "1px solid rgba(200, 230, 201, 0.05)",
+          }}
+        >
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Add a comment… (Enter to post, Shift+Enter for new line)"
+            className="w-full resize-none bg-transparent text-[13px] leading-relaxed text-solvent/70 placeholder:text-solvent/20 focus:outline-none"
+            rows={2}
+            maxLength={2000}
+          />
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <label className="flex cursor-pointer items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={isInternal}
+                  onChange={(e) => setIsInternal(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border border-solvent/20 bg-transparent accent-phosphor"
+                />
+                <span className="text-[10px] font-medium tracking-wider uppercase text-solvent/30">Internal</span>
+              </label>
+              {content.length > 0 && (
+                <span className="text-[10px] text-solvent/20 font-mono">
+                  {content.length}/2000
+                </span>
+              )}
+            </div>
+            <button
+              onClick={handlePost}
+              disabled={isPosting || !content.trim()}
+              className="rounded-full px-4 py-1.5 text-[11px] font-medium tracking-wide transition-all duration-200 disabled:opacity-30"
+              style={{
+                background: content.trim() ? "rgba(200, 230, 201, 0.12)" : "rgba(240, 244, 248, 0.04)",
+                color: content.trim() ? "var(--color-phosphor)" : "rgba(240, 244, 248, 0.2)",
+              }}
+            >
+              {isPosting ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border border-phosphor border-t-transparent" />
+                  Posting...
+                </span>
+              ) : (
+                "Post"
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Loading skeleton ── */}
+      {isLoading && comments.length === 0 && (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse rounded-2xl p-4"
+              style={{ background: "rgba(10, 14, 20, 0.2)", border: "1px solid rgba(200, 230, 201, 0.02)" }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-6 w-6 rounded-full bg-bathyal/20" />
+                <div className="h-3 w-20 rounded bg-bathyal/20" />
+                <div className="h-2.5 w-12 rounded bg-bathyal/10" />
+              </div>
+              <div className="h-3 w-full rounded bg-bathyal/10 mb-1.5" />
+              <div className="h-3 w-3/4 rounded bg-bathyal/10" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Error state ── */}
+      {error && !isLoading && comments.length === 0 && (
+        <div className="flex flex-col items-center gap-3 py-8 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 9v4M12 17v0" stroke="rgba(255, 111, 60, 0.6)" strokeWidth="2" strokeLinecap="round" />
+              <path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0z" stroke="rgba(255, 111, 60, 0.3)" strokeWidth="1.5" fill="none" />
+            </svg>
+          </div>
+          <p className="text-xs text-magma">{error}</p>
+          <button onClick={() => fetchComments(1)}
+            className="rounded-full px-4 py-1.5 text-[11px] font-medium text-phosphor"
+            style={{ background: "rgba(200, 230, 201, 0.08)" }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* ── Empty state ── */}
+      {!isLoading && !error && comments.length === 0 && (
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full"
+            style={{ background: "rgba(200, 230, 201, 0.04)", border: "1px solid rgba(200, 230, 201, 0.04)" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"
+                stroke="rgba(200, 230, 201, 0.2)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <p className="text-xs text-solvent/30">No comments yet</p>
+          {canComment && (
+            <p className="text-[11px] text-solvent/20 italic">Be the first to comment</p>
+          )}
+        </div>
+      )}
+
+      {/* ── Comment list ── */}
+      {comments.length > 0 && (
+        <div className="space-y-2.5">
+          {comments.map((c) => {
+            const isEditing = editingId === c.id;
+            const isOwner = c.userId === currentUserId;
+
+            const isNewest = c.id === newestId && comments.length > 1;
+
+            return (
+              <div
+                key={c.id}
+                className={`group rounded-2xl p-4 transition-all duration-200 ${
+                  isEditing ? "" : "hover:scale-[1.005]"
+                } ${isNewest ? "animate-fade-in" : "animate-fade-in"}`}
+                style={{
+                  animationDelay: isNewest ? "0ms" : `${Math.random() * 100}ms`,
+                  background: c.internal
+                    ? "rgba(226, 196, 152, 0.04)"
+                    : "rgba(10, 14, 20, 0.3)",
+                  border: isEditing
+                    ? "1px solid rgba(200, 230, 201, 0.12)"
+                    : c.internal
+                      ? "1px solid rgba(226, 196, 152, 0.06)"
+                      : "1px solid rgba(200, 230, 201, 0.03)",
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Avatar */}
+                  <div
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tracking-wide uppercase"
+                    style={{
+                      background: `${avatarColor(c.userName)}22`,
+                      color: avatarColor(c.userName),
+                      border: `1px solid ${avatarColor(c.userName)}33`,
+                    }}
+                  >
+                    {getInitials(c.userName)}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    {/* Header row */}
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-[12px] font-medium text-solvent/70">
+                        {c.userName}
+                      </span>
+                      <span className="text-[10px] text-solvent/20 font-mono">
+                        {formatTime(c.createdAt)}
+                      </span>
+                      {c.isEdited && (
+                        <span className="text-[9px] italic text-solvent/25 font-mono">(edited)</span>
+                      )}
+                      {c.internal && (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-medium tracking-wide uppercase"
+                          style={{
+                            background: "rgba(226, 196, 152, 0.08)",
+                            border: "1px solid rgba(226, 196, 152, 0.1)",
+                            color: "var(--color-cosmic-dust)",
+                          }}
+                        >
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                              stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"
+                            />
+                          </svg>
+                          Internal
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Content or Edit inline */}
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          onKeyDown={handleEditKeyDown}
+                          className="w-full resize-none rounded-xl bg-bathyal/20 px-3 py-2 text-[13px] leading-relaxed text-solvent/70 placeholder:text-solvent/20 focus:outline-none focus:ring-1 focus:ring-phosphor/20"
+                          rows={3}
+                          maxLength={2000}
+                          autoFocus
+                        />
+                        {editError && (
+                          <p className="text-[11px] text-magma">{editError}</p>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-solvent/20 font-mono">
+                            {editContent.length}/2000
+                          </span>
+                          <div className="flex gap-1.5">
+                            <button onClick={handleCancelEdit}
+                              className="rounded-full px-3 py-1 text-[10px] font-medium text-solvent/40 transition-all hover:text-solvent/70"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleSaveEdit}
+                              disabled={isSavingEdit || !editContent.trim()}
+                              className="rounded-full px-3 py-1 text-[10px] font-medium transition-all disabled:opacity-30"
+                              style={{
+                                background: "rgba(200, 230, 201, 0.12)",
+                                color: "var(--color-phosphor)",
+                              }}
+                            >
+                              {isSavingEdit ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-phosphor border-t-transparent" />
+                                  Saving
+                                </span>
+                              ) : (
+                                "Save"
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-[13px] leading-relaxed text-solvent/50 whitespace-pre-wrap break-words">
+                          {c.content}
+                        </p>
+
+                        {/* Action buttons */}
+                        {isOwner && (
+                          <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                            <button
+                              onClick={() => handleStartEdit(c)}
+                              className="rounded-full p-1.5 transition-all hover:bg-white/5"
+                              title="Edit comment"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                                  stroke="rgba(240, 244, 248, 0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setDeletingId(c.id)}
+                              className="rounded-full p-1.5 transition-all hover:bg-white/5"
+                              title="Delete comment"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                                  stroke="rgba(240, 244, 248, 0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Load more ── */}
+      {hasMore && (
+        <div className="mt-4 text-center">
+          <button
+            onClick={handleLoadMore}
+            disabled={isLoading}
+            className="rounded-full px-5 py-2 text-[11px] font-medium tracking-wide transition-all duration-200 disabled:opacity-30"
+            style={{
+              background: "rgba(200, 230, 201, 0.06)",
+              border: "1px solid rgba(200, 230, 201, 0.06)",
+              color: "var(--color-phosphor)",
+            }}
+          >
+            {isLoading ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border border-phosphor border-t-transparent" />
+                Loading...
+              </span>
+            ) : (
+              "Load more comments"
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* ── Delete confirmation modal ── */}
+      {deletingId && (
+        <DeleteConfirmModal
+          complaintId={complaintId}
+          commentId={deletingId}
+          onClose={() => setDeletingId(null)}
+          onDeleted={handleDeleteSuccess}
+        />
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPLAINT DETAIL PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -483,6 +1188,7 @@ export default function ComplaintDetailPage() {
   const canClose = profile ? checkPermissions(auth, [Permissions.COMPLAINT_CLOSE]).allowed : false;
   const canReopen = profile ? checkPermissions(auth, [Permissions.COMPLAINT_REOPEN]).allowed : false;
   const canEscalate = profile ? checkPermissions(auth, [Permissions.COMPLAINT_ESCALATE]).allowed : false;
+  const canComment = profile ? checkPermissions(auth, [Permissions.COMPLAINT_COMMENT]).allowed : false;
 
   // ── Fetch complaint ─────────────────────────────────────────────────────
   const fetchComplaint = useCallback(async () => {
@@ -588,7 +1294,6 @@ export default function ComplaintDetailPage() {
     if (t.endpoint === "/close") return canClose;
     if (t.endpoint === "/reopen") return canReopen;
     if (t.endpoint === "/escalate") return canEscalate;
-    if (t.endpoint === "/assign") return profile?.permissions.includes(Permissions.COMPLAINT_REASSIGN) ?? false;
     return false;
   }
 
@@ -714,7 +1419,6 @@ export default function ComplaintDetailPage() {
                             color: "var(--color-phosphor)",
                           }}
                         >
-                          {/* Dynamic icon based on transition type */}
                           {t.id === "start" || t.id === "resume" ? (
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                               <path d="M5 3l14 9-14 9V3z" fill="currentColor" opacity="0.6" />
@@ -910,7 +1614,7 @@ export default function ComplaintDetailPage() {
                       </span>
                       {canUpdate && (
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                          className="shrink-0 text-solvent/15 opacity-0 transition-all group-hover:opacity-100" aria-hidden="true">
+                          className="mt-0.5 shrink-0 text-solvent/15 opacity-0 transition-all group-hover:opacity-100" aria-hidden="true">
                           <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       )}
@@ -1012,6 +1716,9 @@ export default function ComplaintDetailPage() {
                 <span className="font-mono">ID: {complaint.id}</span>
                 <span>User: {complaint.userId}</span>
               </div>
+
+              {/* ── Comment Section ── */}
+              <CommentSection complaintId={complaintId} canComment={canComment} currentUserId={auth.user?.userId ?? ""} />
             </div>
           </>
         ) : null}

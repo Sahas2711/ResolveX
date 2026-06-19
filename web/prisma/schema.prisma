@@ -408,7 +408,9 @@ model Comment {
   userId      String   @db.Uuid
   content     String   @db.Text
   isInternal  Boolean  @default(false) @db.Boolean
+  isEdited    Boolean  @default(false) @db.Boolean
   createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
 
   complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
