@@ -229,14 +229,14 @@ model Product {
   productCode String        @unique @db.VarChar(50)
   productName String        @db.VarChar(255)
   description String?       @db.Text
-  categoryId  String        @db.Uuid
+  categoryId  String?       @db.Uuid
   ownerId     String?       @db.Uuid
   status      ProductStatus @default(ACTIVE)
   deletedAt   DateTime?     @db.Timestamp(6)
   createdAt   DateTime      @default(now()) @db.Timestamp(6)
   updatedAt   DateTime      @updatedAt @db.Timestamp(6)
 
-  category            ProductCategory        @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  category            ProductCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   slaRules            ProductSLARule[]
   teamMappings        ProductTeamMapping[]
   complaints          Complaint[]
