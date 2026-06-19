@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getAccessToken, useAuth, checkPermissions } from "@/hooks/useAuth";
 import { Permissions } from "@/lib/permissions";
@@ -23,9 +23,12 @@ interface TeamMember {
   joinedAt: string;
 }
 
-interface ServerError {
-  code: string;
-  message: string;
+interface UserSearchResult {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  employeeId: string;
 }
 
 // ── Particle Field ─────────────────────────────────────────────────────────
@@ -64,7 +67,7 @@ function ParticleField() {
   );
 }
 
-// ── Delete Confirmation Modal ──────────────────────────────────────────────
+// ── Delete Team Confirmation Modal ─────────────────────────────────────────
 
 function DeleteModal({
   teamName,
@@ -150,7 +153,92 @@ function DeleteModal({
   );
 }
 
-// ── Add Member Modal ───────────────────────────────────────────────────────
+// ── Remove Member Confirmation Modal ───────────────────────────────────────
+
+function RemoveMemberModal({
+  memberName,
+  isRemoving,
+  error,
+  onConfirm,
+  onCancel,
+}: {
+  memberName: string;
+  isRemoving: boolean;
+  error: string | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-abyss/60 backdrop-blur-sm" onClick={onCancel} />
+      <div
+        className="relative w-full max-w-sm animate-slide-up rounded-[2rem] p-8 text-center"
+        style={{
+          background: "linear-gradient(135deg, rgba(26, 31, 40, 0.9), rgba(19, 26, 36, 0.85))",
+          backdropFilter: "blur(32px) saturate(0.8)",
+          border: "1px solid rgba(255, 111, 60, 0.08)",
+        }}
+      >
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full"
+          style={{
+            background: "radial-gradient(circle at 35% 30%, rgba(255, 111, 60, 0.12), rgba(255, 111, 60, 0.03))",
+            border: "1px solid rgba(255, 111, 60, 0.1)",
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M17 7l-5 5m0 0l-5-5m5 5V3" stroke="rgba(255, 111, 60, 0.7)" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h7" stroke="rgba(255, 111, 60, 0.4)" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </div>
+
+        <h3 className="text-lg font-medium text-solvent">Remove member?</h3>
+        <p className="mt-2 text-sm leading-relaxed text-solvent/40">
+          Are you sure you want to remove <span className="font-medium text-solvent/60">&ldquo;{memberName}&rdquo;</span>?
+          They will lose access to this team.
+        </p>
+
+        {error && (
+          <div className="mt-4 rounded-xl px-3 py-2 text-xs text-magma" style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)" }}>
+            {error}
+          </div>
+        )}
+
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={onCancel}
+            disabled={isRemoving}
+            className="flex-1 rounded-full py-2.5 text-sm text-solvent/50 transition-all hover:text-solvent"
+            style={{ border: "1px solid rgba(240, 244, 248, 0.06)" }}
+          >
+            Keep member
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isRemoving}
+            className="flex-1 rounded-full py-2.5 text-sm font-medium transition-all"
+            style={{
+              background: isRemoving ? "rgba(255, 111, 60, 0.1)" : "rgba(255, 111, 60, 0.15)",
+              border: "1px solid rgba(255, 111, 60, 0.2)",
+              color: "var(--color-magma)",
+              opacity: isRemoving ? 0.5 : 1,
+            }}
+          >
+            {isRemoving ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border border-magma border-t-transparent" />
+                Removing...
+              </span>
+            ) : (
+              "Remove"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Add Member Modal (with user search) ────────────────────────────────────
 
 function AddMemberModal({
   isOpen,
@@ -165,20 +253,90 @@ function AddMemberModal({
   onClose: () => void;
   onSubmit: (userId: string, role: "lead" | "member") => void;
 }) {
-  const [userId, setUserId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
   const [role, setRole] = useState<"lead" | "member">("member");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  // Reset state on open
   useEffect(() => {
-    if (isOpen) { setUserId(""); setRole("member"); }
+    if (isOpen) {
+      setSearchQuery("");
+      setSearchResults([]);
+      setSelectedUser(null);
+      setRole("member");
+      setShowDropdown(false);
+    }
   }, [isOpen]);
 
+  // Debounced user search
+  useEffect(() => {
+    if (!searchQuery.trim() || selectedUser) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const token = getAccessToken();
+        const res = await fetch(`/api/v1/users?search=${encodeURIComponent(searchQuery)}&pageSize=10`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const body = await res.json();
+          const users: UserSearchResult[] = body?.data ?? [];
+          setSearchResults(users.filter((u) => u.id !== undefined));
+          setShowDropdown(users.length > 0);
+        }
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchQuery, selectedUser]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   if (!isOpen) return null;
+
+  function handleSelectUser(user: UserSearchResult) {
+    setSelectedUser(user);
+    setSearchQuery(`${user.firstName} ${user.lastName} (${user.email})`);
+    setShowDropdown(false);
+    setSearchResults([]);
+  }
+
+  function handleClearSelection() {
+    setSelectedUser(null);
+    setSearchQuery("");
+    setSearchResults([]);
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-abyss/60 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="relative w-full max-w-sm animate-slide-up rounded-[2rem] p-8"
+        className="relative w-full max-w-md animate-slide-up rounded-[2rem] p-6 sm:p-8"
         style={{
           background: "linear-gradient(135deg, rgba(26, 31, 40, 0.9), rgba(19, 26, 36, 0.85))",
           backdropFilter: "blur(32px) saturate(0.8)",
@@ -192,11 +350,11 @@ function AddMemberModal({
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" stroke="rgba(46, 74, 74, 0.6)" strokeWidth="1.5" strokeLinecap="round" />
               <circle cx="9" cy="7" r="4" stroke="rgba(46, 74, 74, 0.6)" strokeWidth="1.5" />
-              <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="rgba(46, 74, 74, 0.6)" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M19 8v6M22 11h-6" stroke="rgba(46, 74, 74, 0.6)" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
           <h3 className="text-lg font-medium text-solvent">Add member</h3>
-          <p className="mt-1 text-sm text-solvent/40">Enter the user ID to add to this team.</p>
+          <p className="mt-1 text-sm text-solvent/40">Search and select a user to add to this team.</p>
         </div>
 
         {error && (
@@ -205,21 +363,99 @@ function AddMemberModal({
           </div>
         )}
 
-        <div className="mb-4 floating-label">
-          <input
-            id="memberUserId"
-            type="text"
-            autoComplete="off"
-            placeholder=" "
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            disabled={isSubmitting}
-            className={`input-plasma w-full pb-2 pt-3 text-[14px] ${userId ? "filled" : ""}`}
-          />
-          <label htmlFor="memberUserId">User ID (UUID)</label>
+        {/* ── User Search ── */}
+        <div ref={searchRef} className="relative mb-4">
+          {selectedUser ? (
+            <div className="flex items-center gap-2 rounded-2xl px-4 py-3"
+              style={{ background: "rgba(46, 74, 74, 0.1)", border: "1px solid rgba(46, 74, 74, 0.15)" }}
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                style={{ background: "rgba(46, 74, 74, 0.2)" }}
+              >
+                <span className="text-xs font-medium text-bathyal">
+                  {selectedUser.firstName.charAt(0)}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-solvent/70">
+                  {selectedUser.firstName} {selectedUser.lastName}
+                </p>
+                <p className="truncate text-xs text-solvent/30 font-mono">{selectedUser.email}</p>
+              </div>
+              <button
+                onClick={handleClearSelection}
+                disabled={isSubmitting}
+                className="shrink-0 rounded-full p-1 text-solvent/20 transition-colors hover:text-magma"
+                aria-label="Clear selection"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <div className="floating-label">
+              <input
+                id="userSearch"
+                type="text"
+                autoComplete="off"
+                placeholder=" "
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                disabled={isSubmitting}
+                autoFocus
+                className={`input-plasma w-full pb-2 pt-3 text-[14px] ${searchQuery ? "filled" : ""}`}
+              />
+              <label htmlFor="userSearch">
+                {isSearching ? "Searching..." : "Search by name or email"}
+              </label>
+            </div>
+          )}
+
+          {/* ── Search dropdown ── */}
+          {showDropdown && searchResults.length > 0 && (
+            <div
+              className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-2xl p-1 animate-fade-in"
+              style={{
+                background: "linear-gradient(135deg, rgba(19, 26, 36, 0.95), rgba(26, 31, 40, 0.9))",
+                backdropFilter: "blur(32px) saturate(0.8)",
+                border: "1px solid rgba(46, 74, 74, 0.12)",
+              }}
+            >
+              {searchResults.map((user) => (
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => handleSelectUser(user)}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-200"
+                  style={{ background: "transparent" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(46, 74, 74, 0.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                    style={{ background: "rgba(46, 74, 74, 0.15)" }}
+                  >
+                    <span className="text-xs font-medium text-bathyal">
+                      {user.firstName.charAt(0)}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-solvent/70">
+                      {user.firstName} {user.lastName}
+                    </p>
+                    <p className="truncate text-xs text-solvent/30 font-mono">{user.email}</p>
+                  </div>
+                  <span className="ml-auto shrink-0 text-[10px] text-solvent/20 font-mono">
+                    {user.employeeId}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="mb-6 flex items-center gap-4">
+        {/* ── Role selector ── */}
+        <div className="mb-6 flex items-center gap-3 sm:gap-4">
           <span className="text-[13px] font-medium tracking-wide text-solvent/40 uppercase">Role</span>
           <div className="flex gap-2">
             {(["member", "lead"] as const).map((r) => (
@@ -241,6 +477,7 @@ function AddMemberModal({
           </div>
         </div>
 
+        {/* ── Buttons ── */}
         <div className="flex gap-3">
           <button
             onClick={onClose}
@@ -251,13 +488,13 @@ function AddMemberModal({
             Cancel
           </button>
           <button
-            onClick={() => onSubmit(userId, role)}
-            disabled={isSubmitting || !userId.trim()}
+            onClick={() => selectedUser && onSubmit(selectedUser.id, role)}
+            disabled={isSubmitting || !selectedUser}
             className="flex-1 rounded-full py-2.5 text-sm font-medium transition-all"
             style={{
-              background: isSubmitting || !userId.trim() ? "rgba(46, 74, 74, 0.05)" : "rgba(46, 74, 74, 0.2)",
+              background: isSubmitting || !selectedUser ? "rgba(46, 74, 74, 0.05)" : "rgba(46, 74, 74, 0.2)",
               border: "1px solid rgba(46, 74, 74, 0.15)",
-              color: isSubmitting || !userId.trim() ? "rgba(240, 244, 248, 0.2)" : "var(--color-bathyal)",
+              color: isSubmitting || !selectedUser ? "rgba(240, 244, 248, 0.2)" : "var(--color-bathyal)",
               opacity: isSubmitting ? 0.5 : 1,
             }}
           >
@@ -267,7 +504,7 @@ function AddMemberModal({
                 Adding...
               </span>
             ) : (
-              "Add member"
+              selectedUser ? `Add as ${role}` : "Select a user"
             )}
           </button>
         </div>
@@ -297,7 +534,9 @@ export default function TeamDetailPage() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [addMemberError, setAddMemberError] = useState<string | null>(null);
-  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
+  const [isRemovingMember, setIsRemovingMember] = useState(false);
+  const [removeMemberError, setRemoveMemberError] = useState<string | null>(null);
 
   const canUpdate = profile ? checkPermissions(auth, [Permissions.TEAM_UPDATE]).allowed : false;
   const canDelete = profile ? checkPermissions(auth, [Permissions.TEAM_DELETE]).allowed : false;
@@ -330,6 +569,18 @@ export default function TeamDetailPage() {
       } catch { setError("Failed to load team"); } finally { setIsFetching(false); }
     })();
   }, [teamId, authLoading, isAuthenticated]);
+
+  // ── Re-fetch members helper ──────────────────────────────────────────────
+  const refreshMembers = useCallback(async () => {
+    const token = getAccessToken();
+    const res = await fetch(`/api/v1/teams/${teamId}/members`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (res.ok) {
+      const body = await res.json();
+      setMembers(body.data ?? []);
+    }
+  }, [teamId]);
 
   // ── Delete handler ───────────────────────────────────────────────────────
   async function handleDelete() {
@@ -383,14 +634,7 @@ export default function TeamDetailPage() {
       }
       if (!res.ok) throw new Error("Failed to add member");
 
-      // Refresh members
-      const membersRes = await fetch(`/api/v1/teams/${teamId}/members`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (membersRes.ok) {
-        const body = await membersRes.json();
-        setMembers(body.data ?? []);
-      }
+      await refreshMembers();
       setShowAddMember(false);
     } catch {
       setAddMemberError("Failed to add member. Please try again.");
@@ -400,28 +644,24 @@ export default function TeamDetailPage() {
   }
 
   // ── Remove member handler ────────────────────────────────────────────────
-  async function handleRemoveMember(userId: string) {
-    setRemovingUserId(userId);
+  async function handleRemoveMember() {
+    if (!memberToRemove) return;
+    setIsRemovingMember(true);
+    setRemoveMemberError(null);
     try {
       const token = getAccessToken();
-      const res = await fetch(`/api/v1/teams/${teamId}/members?userId=${userId}`, {
+      const res = await fetch(`/api/v1/teams/${teamId}/members?userId=${memberToRemove.userId}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok && res.status !== 404) throw new Error("Failed to remove member");
 
-      // Re-fetch members to stay in sync with backend
-      const membersRes = await fetch(`/api/v1/teams/${teamId}/members`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (membersRes.ok) {
-        const body = await membersRes.json();
-        setMembers(body.data ?? []);
-      }
+      await refreshMembers();
+      setMemberToRemove(null);
     } catch {
-      // Silently fail — members list stays untouched
+      setRemoveMemberError("Failed to remove member. Please try again.");
     } finally {
-      setRemovingUserId(null);
+      setIsRemovingMember(false);
     }
   }
 
@@ -501,7 +741,7 @@ export default function TeamDetailPage() {
                     />
                     <h1 className="text-2xl font-medium text-solvent sm:text-3xl">{team.name}</h1>
                   </div>
-                  <div className="mt-2 flex items-center gap-4 text-[11px] tracking-wide text-solvent/20 uppercase">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tracking-wide text-solvent/20 uppercase">
                     <span>Created {new Date(team.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                     <span>{members.length} member{members.length !== 1 ? "s" : ""}</span>
                   </div>
@@ -575,7 +815,8 @@ export default function TeamDetailPage() {
                       <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
                       <path d="M19 8v6M22 11h-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                     </svg>
-                    Add member
+                    <span className="hidden sm:inline">Add member</span>
+                    <span className="sm:hidden">Add</span>
                   </button>
                 )}
               </div>
@@ -597,12 +838,12 @@ export default function TeamDetailPage() {
                   {members.map((member) => (
                     <div
                       key={member.userId}
-                      className="flex items-center justify-between gap-4 rounded-2xl p-4 transition-all duration-300"
+                      className="group flex items-center justify-between gap-3 rounded-2xl p-3 sm:p-4 transition-all duration-300 hover:bg-bathyal/5"
                       style={{ background: "rgba(10, 14, 20, 0.3)", border: "1px solid rgba(46, 74, 74, 0.04)" }}
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        {/* Avatar placeholder */}
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                        {/* Avatar */}
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-300"
                           style={{ background: member.role === "lead" ? "rgba(46, 74, 74, 0.25)" : "rgba(46, 74, 74, 0.12)" }}
                         >
                           <span className="text-xs font-medium tracking-wide uppercase"
@@ -611,34 +852,36 @@ export default function TeamDetailPage() {
                             {member.userName.charAt(0)}
                           </span>
                         </div>
+
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             <p className="truncate text-sm font-medium text-solvent/70">{member.userName}</p>
                             {member.role === "lead" && (
-                              <span className="rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase"
+                              <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase"
                                 style={{ background: "rgba(46, 74, 74, 0.12)", color: "var(--color-bathyal)" }}
                               >
                                 Lead
                               </span>
                             )}
                           </div>
-                          <p className="truncate text-xs text-solvent/25 font-mono">{member.email}</p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <p className="truncate text-xs text-solvent/25 font-mono">{member.email}</p>
+                            <span className="hidden sm:inline text-[10px] text-solvent/15">
+                              Joined {new Date(member.joinedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </span>
+                          </div>
                         </div>
                       </div>
+
                       {canUpdate && (
                         <button
-                          onClick={() => handleRemoveMember(member.userId)}
-                          disabled={removingUserId === member.userId}
-                          className="shrink-0 rounded-full p-2 text-solvent/15 transition-all duration-300 hover:bg-magma/10 hover:text-magma"
+                          onClick={() => setMemberToRemove(member)}
+                          className="shrink-0 rounded-full p-2 text-solvent/15 transition-all duration-300 hover:bg-magma/10 hover:text-magma opacity-0 group-hover:opacity-100 focus:opacity-100"
                           aria-label={`Remove ${member.userName}`}
                         >
-                          {removingUserId === member.userId ? (
-                            <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border border-magma border-t-transparent" />
-                          ) : (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                            </svg>
-                          )}
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
                         </button>
                       )}
                     </div>
@@ -650,7 +893,7 @@ export default function TeamDetailPage() {
         ) : null}
       </div>
 
-      {/* ── Delete Modal ── */}
+      {/* ── Delete Team Modal ── */}
       {showDeleteModal && team && (
         <DeleteModal
           teamName={team.name}
@@ -658,6 +901,17 @@ export default function TeamDetailPage() {
           error={deleteError}
           onConfirm={handleDelete}
           onCancel={() => { setShowDeleteModal(false); setDeleteError(null); }}
+        />
+      )}
+
+      {/* ── Remove Member Modal ── */}
+      {memberToRemove && (
+        <RemoveMemberModal
+          memberName={memberToRemove.userName}
+          isRemoving={isRemovingMember}
+          error={removeMemberError}
+          onConfirm={handleRemoveMember}
+          onCancel={() => { setMemberToRemove(null); setRemoveMemberError(null); }}
         />
       )}
 
