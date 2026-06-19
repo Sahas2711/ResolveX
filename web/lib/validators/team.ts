@@ -76,6 +76,45 @@ export const addMemberSchema = z.object({
 
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
 
+// ── Map Team to Product Schema ─────────────────────────────────────────────
+// API spec: POST /products/{productId}/teams { teamId, isPrimary?, loadWeight? }
+export const mapTeamSchema = z.object({
+  teamId: z.string().uuid("Invalid team ID format"),
+  isPrimary: z.boolean().optional().default(false),
+  loadWeight: z.number().min(0.1, "Load weight must be at least 0.1").optional().default(1.0),
+});
+
+export type MapTeamInput = z.infer<typeof mapTeamSchema>;
+
+// ── ProductTeamMapping Response Shape (matches API spec) ───────────────────
+export interface ProductTeamMappingResponse {
+  teamId: string;
+  teamName: string;
+  isPrimary: boolean;
+  loadWeight: number;
+}
+
+// ── Helper: Map a Prisma ProductTeamMapping row to API response shape ─────
+export interface ProductTeamMappingSelectShape {
+  teamId: string;
+  isPrimary: boolean;
+  loadWeight: number;
+  team: {
+    teamName: string;
+  };
+}
+
+export function toProductTeamMappingResponse(
+  mapping: ProductTeamMappingSelectShape
+): ProductTeamMappingResponse {
+  return {
+    teamId: mapping.teamId,
+    teamName: mapping.team.teamName,
+    isPrimary: mapping.isPrimary,
+    loadWeight: mapping.loadWeight,
+  };
+}
+
 // ── Team Response Shape ────────────────────────────────────────────────────
 export interface TeamResponse {
   id: string;
