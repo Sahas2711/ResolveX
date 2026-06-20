@@ -1062,14 +1062,14 @@ function TimelineSection({
     }
   }
 
-  function getEventLabel(type: string) {
+  function getEventLabel(type: string, eventData: Record<string, string> | null = null) {
     switch (type) {
       case "status_change": return "Status Changed";
       case "assignment":    return "Assigned";
-      case "comment":       return "Comment Added";
+      case "comment":       return eventData?.action === "deleted" ? "Comment Deleted" : "Comment Added";
       case "escalation":    return "Escalated";
       case "resolution":    return "Resolved";
-      case "attachment":    return "Attachment Added";
+      case "attachment":    return eventData?.action === "deleted" ? "Attachment Deleted" : "Attachment Added";
       default:              return "Update";
     }
   }
@@ -1087,9 +1087,9 @@ function TimelineSection({
       case "resolution":
         return d.resolution ? `Resolution: ${d.resolution}` : "";
       case "attachment":
-        return d.fileName ?? "";
+        return d.action === 'deleted' ? 'Attachment removed' : (d.fileName ?? '');
       case "comment":
-        return d.commentId ? "Comment added" : "";
+        return d.action === 'deleted' ? 'Comment removed' : (d.commentId ? 'Comment added' : '');
       default:
         return "";
     }
@@ -1167,7 +1167,7 @@ function TimelineSection({
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs font-medium text-white/40">
-                  {getEventLabel(event.eventType)}
+                  {getEventLabel(event.eventType, event.eventData)}
                 </p>
                 {getEventDescription(event) && (
                   <p className="mt-1 text-sm text-white/50 leading-relaxed">
