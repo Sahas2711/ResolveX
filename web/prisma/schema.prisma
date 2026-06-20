@@ -80,6 +80,7 @@ enum TimelineEventType {
   ESCALATION
   RESOLUTION
   ATTACHMENT
+  UPDATE
 }
 
 enum TeamMemberRole {

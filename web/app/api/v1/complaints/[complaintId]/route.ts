@@ -18,6 +18,8 @@ import {
   updateComplaintSchema,
   mapApiPriorityToPrisma,
   mapApiSeverityToPrisma,
+  mapPrismaPriorityToApi,
+  mapPrismaSeverityToApi,
   complaintSelect,
   toComplaintResponse,
 } from "@/lib/validators/complaint";
@@ -177,17 +179,62 @@ export async function PUT(
       updateData.title = categoryName;
     }
 
-    // ── Update the complaint ──────────────────────────────────────────
-    const updated = await prisma.complaint.update({
-      where: { id: complaintId },
-      data: updateData as any,
-      select: complaintSelect,
+    // ── Build changes object for timeline event ───────────────────────
+    const changes: Record<string, { from: string; to: string }> = {};
+
+    if (priority) {
+      changes.priority = {
+        from: mapPrismaPriorityToApi(existing.priority),
+        to: priority,
+      };
+    }
+
+    if (severity) {
+      changes.severity = {
+        from: mapPrismaSeverityToApi(existing.severity),
+        to: severity,
+      };
+    }
+
+    if (description) {
+      changes.description = {
+        from: "[previous]",
+        to: "[updated]",
+      };
+    }
+
+    if (categoryName) {
+      changes.category = {
+        from: existing.title,
+        to: categoryName,
+      };
+    }
+
+    // ── Update the complaint and create timeline event in transaction ───
+    const updated = await prisma.$transaction(async (tx: any) => {
+      const result = await tx.complaint.update({
+        where: { id: complaintId },
+        data: updateData as any,
+        select: complaintSelect,
+      });
+
+      await tx.complaintTimeline.create({
+        data: {
+          complaintId,
+          eventType: "UPDATE",
+          actorId: auth.user.userId,
+          eventData: { changes } as any,
+        },
+      });
+
+      return result;
     });
 
     logger.info("Complaint updated", {
       ...ctx,
       ticketNumber: updated.ticketNumber,
       updatedFields: Object.keys(updateData),
+      changes,
     });
 
     return successResponse(toComplaintResponse(updated));

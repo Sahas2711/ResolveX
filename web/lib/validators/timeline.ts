@@ -14,6 +14,7 @@ export const ApiTimelineEventType = z.enum([
   "escalation",
   "resolution",
   "attachment",
+  "update",
 ]);
 export type ApiTimelineEventType = z.infer<typeof ApiTimelineEventType>;
 
@@ -50,6 +51,7 @@ function mapPrismaEventTypeToApi(eventType: string): ApiTimelineEventType {
     ESCALATION: "escalation",
     RESOLUTION: "resolution",
     ATTACHMENT: "attachment",
+    UPDATE: "update",
   };
   return map[eventType] ?? "status_change";
 }

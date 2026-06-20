@@ -83,6 +83,7 @@ export async function GET(
         escalation: "ESCALATION",
         resolution: "RESOLUTION",
         attachment: "ATTACHMENT",
+        update: "UPDATE",
       };
       const prismaType = typeMap[eventTypeFilter];
       if (prismaType) {

@@ -1054,6 +1054,8 @@ function TimelineSection({
     switch (type) {
       case "status_change": return "🔄";
       case "assignment":    return "👤";
+      case "update":
+        return d.changes ? Object.keys(d.changes).join(', ') + ' updated' : '';
       case "comment":       return "💬";
       case "escalation":    return "⬆️";
       case "resolution":    return "✅";
@@ -1066,10 +1068,13 @@ function TimelineSection({
     switch (type) {
       case "status_change": return "Status Changed";
       case "assignment":    return "Assigned";
+      case "update":
+        return d.changes ? Object.keys(d.changes).join(', ') + ' updated' : '';
       case "comment":       return eventData?.action === "deleted" ? "Comment Deleted" : "Comment Added";
       case "escalation":    return "Escalated";
       case "resolution":    return "Resolved";
       case "attachment":    return eventData?.action === "deleted" ? "Attachment Deleted" : "Attachment Added";
+      case "update":       return "Updated";
       default:              return "Update";
     }
   }
@@ -1088,6 +1093,8 @@ function TimelineSection({
         return d.resolution ? `Resolution: ${d.resolution}` : "";
       case "attachment":
         return d.action === 'deleted' ? 'Attachment removed' : (d.fileName ?? '');
+      case "update":
+        return d.changes ? Object.keys(d.changes).join(', ') + ' updated' : '';
       case "comment":
         return d.action === 'deleted' ? 'Comment removed' : (d.commentId ? 'Comment added' : '');
       default:
