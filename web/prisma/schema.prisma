@@ -422,14 +422,15 @@ model Comment {
 }
 
 model Attachment {
-  id          String   @id @default(uuid()) @db.Uuid
-  complaintId String   @db.Uuid
-  uploadedBy  String   @db.Uuid
-  fileName    String   @db.VarChar(255)
-  fileType    String   @db.VarChar(100)
-  fileSize    Int
-  storageUrl  String   @db.Text
-  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  id              String   @id @default(uuid()) @db.Uuid
+  complaintId     String   @db.Uuid
+  uploadedBy      String   @db.Uuid
+  fileName        String   @db.VarChar(255)
+  fileType        String   @db.VarChar(100)
+  fileSize        Int
+  storageUrl      String   @db.Text
+  storagePublicId String?  @db.Text
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
 
   complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   uploadedByUser User @relation(fields: [uploadedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)

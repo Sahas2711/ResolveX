@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getAccessToken, useAuth, checkPermissions } from "@/hooks/useAuth";
 import { Permissions } from "@/lib/permissions";
@@ -551,6 +551,467 @@ function DeleteConfirmModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ATTACHMENT ITEM TYPE
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface AttachmentItem {
+  id: string;
+  complaintId: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  fileUrl: string;
+  uploadedBy: string;
+  uploadedByName: string;
+  createdAt: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ATTACHMENT SECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+function AttachmentSection({
+  complaintId,
+  canUpload,
+  currentUserId,
+}: {
+  complaintId: string;
+  canUpload: boolean;
+  currentUserId: string;
+}) {
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Fetch attachments ──────────────────────────────────────────────────
+  const fetchAttachments = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`/api/v1/complaints/${complaintId}/attachments`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Failed to fetch attachments");
+      const body = await res.json();
+      setAttachments((body.data ?? []) as AttachmentItem[]);
+    } catch {
+      setError("Failed to load attachments");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [complaintId]);
+
+  useEffect(() => { fetchAttachments(); }, [fetchAttachments]);
+
+  // ── Upload handler ─────────────────────────────────────────────────────
+  async function handleUpload(file: File) {
+    setIsUploading(true);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`/api/v1/complaints/${complaintId}/attachments`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setUploadError(json?.error?.message ?? "Failed to upload file");
+        return;
+      }
+
+      const body = await res.json();
+      const newAttachment = body.data as AttachmentItem;
+      setAttachments((prev) => [newAttachment, ...prev]);
+    } catch {
+      setUploadError("Network error. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  // ── File input change ──────────────────────────────────────────────────
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    handleUpload(files[0]);
+    // Reset input so the same file can be re-uploaded
+    e.target.value = "";
+  }
+
+  // ── Drag & drop handlers ───────────────────────────────────────────────
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleUpload(files[0]);
+    }
+  }
+
+  // ── Delete handler ─────────────────────────────────────────────────────
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  async function handleDelete(attachmentId: string) {
+    setIsDeleting(true);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(
+        `/api/v1/complaints/${complaintId}/attachments/${attachmentId}`,
+        {
+          method: "DELETE",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
+      if (res.ok) {
+        setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      }
+    } catch {
+      // Silently fail — the list will refresh on next load
+    } finally {
+      setIsDeleting(false);
+      setDeletingId(null);
+    }
+  }
+
+  // ── Format file size ───────────────────────────────────────────────────
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  // ── Format timestamp ───────────────────────────────────────────────────
+  function formatTime(iso: string): string {
+    const dt = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - dt.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  // ── File type icon helper ──────────────────────────────────────────────
+  function getFileIcon(fileType: string): string {
+    if (fileType.startsWith("image/")) return "image";
+    if (fileType.includes("pdf")) return "pdf";
+    if (fileType.includes("wordprocessingml")) return "docx";
+    return "generic";
+  }
+
+  return (
+    <div className="mt-8 pt-6" style={{ borderTop: "1px solid rgba(200, 230, 201, 0.06)" }}>
+      {/* ── Header ── */}
+      <div className="mb-5 flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
+            stroke="rgba(200, 230, 201, 0.3)" strokeWidth="1.5" fill="none" />
+          <path d="M14 2v6h6m-5 6.5l-3 3-1.5-1.5"
+            stroke="rgba(200, 230, 201, 0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="text-[11px] font-medium tracking-wider text-solvent/20 uppercase">Attachments</span>
+        {attachments.length > 0 && (
+          <span className="text-[10px] text-solvent/15 font-mono">({attachments.length})</span>
+        )}
+      </div>
+
+      {/* ── Upload error ── */}
+      {uploadError && (
+        <div className="mb-4 rounded-2xl px-3 py-2 text-xs"
+          style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)", color: "var(--color-magma)" }}
+          role="alert"
+        >
+          {uploadError}
+        </div>
+      )}
+
+      {/* ── Upload drop zone ── */}
+      {canUpload && (
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className="mb-5 cursor-pointer rounded-2xl p-6 text-center transition-all duration-200"
+          style={{
+            background: dragOver
+              ? "rgba(200, 230, 201, 0.08)"
+              : "rgba(10, 14, 20, 0.4)",
+            border: dragOver
+              ? "2px dashed rgba(200, 230, 201, 0.3)"
+              : "2px dashed rgba(200, 230, 201, 0.08)",
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".jpg,.jpeg,.png,.pdf,.docx"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          {isUploading ? (
+            <div className="flex flex-col items-center gap-2">
+              <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-phosphor border-t-transparent" />
+              <span className="text-xs text-phosphor/60">Uploading...</span>
+            </div>
+          ) : (
+            <>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="mx-auto mb-2" aria-hidden="true">
+                <path d="M12 5v14M5 12l7-7 7 7"
+                  stroke="rgba(200, 230, 201, 0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <p className="text-xs text-solvent/40">
+                <span className="text-phosphor/60">Click</span> to upload or drop a file here
+              </p>
+              <p className="mt-1 text-[10px] text-solvent/20">
+                JPG, PNG, PDF, DOCX &middot; Max 10 MB
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Loading state ── */}
+      {isLoading && (
+        <div className="space-y-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="animate-pulse rounded-2xl p-3"
+              style={{ background: "rgba(10, 14, 20, 0.2)", border: "1px solid rgba(200, 230, 201, 0.02)" }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-xl bg-bathyal/20" />
+                <div className="flex-1">
+                  <div className="h-3 w-2/3 rounded bg-bathyal/20 mb-1" />
+                  <div className="h-2.5 w-1/3 rounded bg-bathyal/10" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Error state ── */}
+      {error && !isLoading && (
+        <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 9v4M12 17v0" stroke="rgba(255, 111, 60, 0.6)" strokeWidth="2" strokeLinecap="round" />
+              <path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0z" stroke="rgba(255, 111, 60, 0.3)" strokeWidth="1.5" fill="none" />
+            </svg>
+          </div>
+          <p className="text-xs text-magma">{error}</p>
+          <button onClick={fetchAttachments}
+            className="rounded-full px-4 py-1.5 text-[11px] font-medium text-phosphor"
+            style={{ background: "rgba(200, 230, 201, 0.08)" }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* ── Empty state ── */}
+      {!isLoading && !error && attachments.length === 0 && (
+        <div className="flex flex-col items-center gap-3 py-8 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full"
+            style={{ background: "rgba(200, 230, 201, 0.04)", border: "1px solid rgba(200, 230, 201, 0.04)" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
+                stroke="rgba(200, 230, 201, 0.2)" strokeWidth="1.5" fill="none" />
+              <path d="M14 2v6h6" stroke="rgba(200, 230, 201, 0.2)" strokeWidth="1.5" />
+            </svg>
+          </div>
+          <p className="text-xs text-solvent/30">No attachments yet</p>
+        </div>
+      )}
+
+      {/* ── Attachment list ── */}
+      {attachments.length > 0 && (
+        <div className="space-y-2">
+          {attachments.map((a) => {
+            const isOwner = a.uploadedBy === currentUserId;
+            const iconType = getFileIcon(a.fileType);
+
+            return (
+              <div
+                key={a.id}
+                className="group rounded-2xl p-3 transition-all duration-200 hover:scale-[1.005]"
+                style={{
+                  background: "rgba(10, 14, 20, 0.3)",
+                  border: "1px solid rgba(200, 230, 201, 0.03)",
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  {/* File icon */}
+                  <a
+                    href={a.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all hover:opacity-80"
+                    style={{ background: "rgba(200, 230, 201, 0.06)" }}
+                  >
+                    {iconType === "image" ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <rect x="3" y="3" width="18" height="18" rx="2" stroke="rgba(200, 230, 201, 0.4)" strokeWidth="1.5" fill="none" />
+                        <circle cx="8.5" cy="8.5" r="1.5" fill="rgba(200, 230, 201, 0.4)" />
+                        <path d="M21 15l-5-5L5 21" stroke="rgba(200, 230, 201, 0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    ) : iconType === "pdf" ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
+                          stroke="rgba(255, 111, 60, 0.4)" strokeWidth="1.5" fill="none" />
+                        <path d="M14 2v6h6" stroke="rgba(255, 111, 60, 0.4)" strokeWidth="1.5" />
+                        <path d="M8 13h8M8 17h5" stroke="rgba(255, 111, 60, 0.3)" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
+                          stroke="rgba(167, 243, 208, 0.4)" strokeWidth="1.5" fill="none" />
+                        <path d="M14 2v6h6" stroke="rgba(167, 243, 208, 0.4)" strokeWidth="1.5" />
+                        <path d="M16 13H8M16 17H8" stroke="rgba(167, 243, 208, 0.3)" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    )}
+                  </a>
+
+                  {/* File info */}
+                  <a
+                    href={a.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="min-w-0 flex-1 transition-opacity hover:opacity-80"
+                  >
+                    <p className="truncate text-[13px] font-medium text-solvent/70">
+                      {a.fileName}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-solvent/25 font-mono">
+                        {formatFileSize(a.fileSize)}
+                      </span>
+                      <span className="text-[10px] text-solvent/20">
+                        {a.uploadedByName}
+                      </span>
+                      <span className="text-[10px] text-solvent/15">
+                        {formatTime(a.createdAt)}
+                      </span>
+                    </div>
+                  </a>
+
+                  {/* Delete button (owner only) */}
+                  {isOwner && (
+                    <button
+                      onClick={() => setDeletingId(a.id)}
+                      disabled={isDeleting && deletingId === a.id}
+                      className="shrink-0 rounded-full p-1.5 opacity-0 transition-all duration-200 hover:bg-white/5 group-hover:opacity-100 disabled:opacity-30"
+                      title="Delete attachment"
+                    >
+                      {isDeleting && deletingId === a.id ? (
+                        <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border border-solvent/30 border-t-transparent" />
+                      ) : (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                            stroke="rgba(240, 244, 248, 0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Delete confirmation modal ── */}
+      {deletingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(8px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setDeletingId(null); }}
+        >
+          <div className="w-full max-w-sm animate-slide-up rounded-[2rem] p-6"
+            style={{
+              background: "linear-gradient(135deg, rgba(19, 26, 36, 0.95), rgba(26, 31, 40, 0.9))",
+              border: "1px solid rgba(255, 111, 60, 0.08)",
+              backdropFilter: "blur(32px)",
+            }}
+          >
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full"
+                style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)" }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                    stroke="rgba(255, 111, 60, 0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-solvent/80">Delete attachment</h3>
+                <p className="text-[11px] text-solvent/30 mt-0.5">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => setDeletingId(null)}
+                className="flex-1 rounded-full px-4 py-2.5 text-xs font-medium transition-all"
+                style={{ background: "rgba(240, 244, 248, 0.04)", color: "rgba(240, 244, 248, 0.4)" }}
+              >
+                Cancel
+              </button>
+              <button onClick={() => handleDelete(deletingId)} disabled={isDeleting}
+                className="flex-1 rounded-full px-4 py-2.5 text-xs font-medium transition-all"
+                style={{
+                  background: "rgba(255, 111, 60, 0.12)",
+                  color: "var(--color-magma)",
+                  opacity: isDeleting ? 0.6 : 1,
+                }}
+              >
+                {isDeleting ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-block h-3 w-3 animate-spin rounded-full border border-magma border-t-transparent" />
+                    Deleting...
+                  </span>
+                ) : (
+                  "Delete"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1189,6 +1650,7 @@ export default function ComplaintDetailPage() {
   const canReopen = profile ? checkPermissions(auth, [Permissions.COMPLAINT_REOPEN]).allowed : false;
   const canEscalate = profile ? checkPermissions(auth, [Permissions.COMPLAINT_ESCALATE]).allowed : false;
   const canComment = profile ? checkPermissions(auth, [Permissions.COMPLAINT_COMMENT]).allowed : false;
+  const canUploadAttachments = profile ? checkPermissions(auth, [Permissions.COMPLAINT_ATTACHMENT]).allowed : false;
 
   // ── Fetch complaint ─────────────────────────────────────────────────────
   const fetchComplaint = useCallback(async () => {
@@ -1716,6 +2178,10 @@ export default function ComplaintDetailPage() {
                 <span className="font-mono">ID: {complaint.id}</span>
                 <span>User: {complaint.userId}</span>
               </div>
+
+              {/* ── Comment Section ── */}
+              {/* ── Attachment Section ── */}
+              <AttachmentSection complaintId={complaintId} canUpload={canUploadAttachments} currentUserId={auth.user?.userId ?? ""} />
 
               {/* ── Comment Section ── */}
               <CommentSection complaintId={complaintId} canComment={canComment} currentUserId={auth.user?.userId ?? ""} />

@@ -27,6 +27,7 @@ async function main() {
     { name: "complaint:close", description: "Close complaints" },
     { name: "complaint:reopen", description: "Reopen complaints" },
     { name: "complaint:comment", description: "Add comments to complaints" },
+    { name: "complaint:attachment", description: "Upload and manage attachments" },
     // Products
     { name: "product:create", description: "Create products" },
     { name: "product:read", description: "View product data" },
@@ -92,6 +93,7 @@ async function main() {
         "complaint:create",
         "complaint:read:own",
         "complaint:comment",
+        "complaint:attachment",
       ],
     },
     {
@@ -103,6 +105,7 @@ async function main() {
         "complaint:update:status",
         "complaint:resolve",
         "complaint:comment",
+        "complaint:attachment",
         "dashboard:staff",
       ],
     },
@@ -119,6 +122,7 @@ async function main() {
         "complaint:close",
         "complaint:reopen",
         "complaint:comment",
+        "complaint:attachment",
         "dashboard:staff",
         "dashboard:team",
         "team:read",
@@ -130,6 +134,7 @@ async function main() {
       permissions: [
         "complaint:read:all",
         "complaint:comment",
+        "complaint:attachment",
         "product:create",
         "product:read",
         "product:update",
@@ -153,6 +158,7 @@ async function main() {
         "complaint:close",
         "complaint:reopen",
         "complaint:comment",
+        "complaint:attachment",
         "product:create",
         "product:read",
         "product:update",
