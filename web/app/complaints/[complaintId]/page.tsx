@@ -1017,6 +1017,190 @@ function AttachmentSection({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// TIMELINE SECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+function TimelineSection({
+  complaintId,
+}: {
+  complaintId: string;
+}) {
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTimeline = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = getAccessToken();
+      const res = await fetch(
+        `/api/v1/complaints/${complaintId}/timeline?pageSize=50`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!res.ok) throw new Error("Failed to load timeline");
+      const body = await res.json();
+      setEvents(body.data ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load timeline");
+    } finally {
+      setLoading(false);
+    }
+  }, [complaintId]);
+
+  useEffect(() => { fetchTimeline(); }, [fetchTimeline]);
+
+  function getEventIcon(type: string) {
+    switch (type) {
+      case "status_change": return "🔄";
+      case "assignment":    return "👤";
+      case "update":
+        return d.changes ? Object.keys(d.changes).join(', ') + ' updated' : '';
+      case "comment":       return "💬";
+      case "escalation":    return "⬆️";
+      case "resolution":    return "✅";
+      case "attachment":    return "📎";
+      default:              return "📌";
+    }
+  }
+
+  function getEventLabel(type: string, eventData: Record<string, string> | null = null) {
+    switch (type) {
+      case "status_change": return "Status Changed";
+      case "assignment":    return "Assigned";
+      case "update":
+        return d.changes ? Object.keys(d.changes).join(', ') + ' updated' : '';
+      case "comment":       return eventData?.action === "deleted" ? "Comment Deleted" : "Comment Added";
+      case "escalation":    return "Escalated";
+      case "resolution":    return "Resolved";
+      case "attachment":    return eventData?.action === "deleted" ? "Attachment Deleted" : "Attachment Added";
+      case "update":       return "Updated";
+      default:              return "Update";
+    }
+  }
+
+  function getEventDescription(event: TimelineEvent): string {
+    if (!event.eventData) return "";
+    const d = event.eventData;
+    switch (event.eventType) {
+      case "status_change":
+        return `${d.from ?? "?"} → ${d.to ?? "?"}`;
+      case "assignment":
+        return `Assigned to ${d.assignedTo ?? "?"}`;
+      case "escalation":
+        return d.reason ? `Reason: ${d.reason}` : "";
+      case "resolution":
+        return d.resolution ? `Resolution: ${d.resolution}` : "";
+      case "attachment":
+        return d.action === 'deleted' ? 'Attachment removed' : (d.fileName ?? '');
+      case "update":
+        return d.changes ? Object.keys(d.changes).join(', ') + ' updated' : '';
+      case "comment":
+        return d.action === 'deleted' ? 'Comment removed' : (d.commentId ? 'Comment added' : '');
+      default:
+        return "";
+    }
+  }
+
+  function formatTime(iso: string) {
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  if (loading) {
+    return (
+      <div className="mt-8 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+        <h3 className="mb-6 text-lg font-semibold text-white/90">Timeline</h3>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-start gap-3">
+              <div className="mt-0.5 h-5 w-5 animate-pulse rounded-full bg-white/10" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 w-32 animate-pulse rounded bg-white/10" />
+                <div className="h-3 w-48 animate-pulse rounded bg-white/5" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mt-8 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+        <h3 className="mb-2 text-lg font-semibold text-white/90">Timeline</h3>
+        <p className="text-sm text-red-400">{error}</p>
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="mt-8 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+        <h3 className="mb-2 text-lg font-semibold text-white/90">Timeline</h3>
+        <p className="text-sm text-white/40">No activity recorded yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+      <h3 className="mb-6 text-lg font-semibold text-white/90">Timeline</h3>
+      <div className="relative">
+        <div className="absolute left-[11px] top-2 h-[calc(100%-16px)] w-px bg-white/[0.06]" />
+        <div className="space-y-5">
+          {events.map((event) => (
+            <div key={event.id} className="group relative flex items-start gap-3">
+              <div className="relative z-10 mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-xs ring-1 ring-white/[0.08] transition-colors group-hover:bg-white/[0.10] group-hover:ring-white/[0.12]">
+                {getEventIcon(event.eventType)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="truncate text-sm font-medium text-white/80">
+                    {event.actorName}
+                  </p>
+                  <span className="shrink-0 text-xs text-white/30">
+                    {formatTime(event.createdAt)}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs font-medium text-white/40">
+                  {getEventLabel(event.eventType, event.eventData)}
+                </p>
+                {getEventDescription(event) && (
+                  <p className="mt-1 text-sm text-white/50 leading-relaxed">
+                    {getEventDescription(event)}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface TimelineEvent {
+  id: string;
+  complaintId: string;
+  eventType: string;
+  actorId: string;
+  actorName: string;
+  eventData: Record<string, string> | null;
+  createdAt: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // COMMENT SECTION
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -2182,6 +2366,9 @@ export default function ComplaintDetailPage() {
               {/* ── Comment Section ── */}
               {/* ── Attachment Section ── */}
               <AttachmentSection complaintId={complaintId} canUpload={canUploadAttachments} currentUserId={auth.user?.userId ?? ""} />
+
+              {/* ── Timeline Section ── */}
+              <TimelineSection complaintId={complaintId} />
 
               {/* ── Comment Section ── */}
               <CommentSection complaintId={complaintId} canComment={canComment} currentUserId={auth.user?.userId ?? ""} />

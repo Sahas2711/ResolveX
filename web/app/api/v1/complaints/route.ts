@@ -1,6 +1,7 @@
 // =============================================================================
 // ResolveX — Complaints API
-// POST /api/v1/complaints → Create a new complaint (triggers auto‑assignment)
+// GET   /api/v1/complaints → List/search/filter complaints
+// POST  /api/v1/complaints → Create a new complaint (triggers auto‑assignment)
 // =============================================================================
 
 import prisma from "@/lib/prisma";
@@ -9,6 +10,7 @@ import { Permissions } from "@/lib/permissions";
 import { requirePermissions } from "@/lib/rbac";
 import {
   createdResponse,
+  successResponse,
   notFoundResponse,
   validationErrorResponse,
   internalErrorResponse,
@@ -21,6 +23,25 @@ import {
   toComplaintResponse,
 } from "@/lib/validators/complaint";
 import { resolveBestAssignment } from "@/lib/services/auto-assignment-engine";
+import { z } from "zod";
+
+// ── Zod Schema for list query params ───────────────────────────────────────
+
+const listComplaintsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().optional(),
+  status: z.string().optional(),        // comma-separated: "open,assigned"
+  priority: z.string().optional(),      // comma-separated: "high,critical"
+  severity: z.string().optional(),      // comma-separated: "major,critical"
+  product: z.string().uuid().optional(),
+  team: z.string().uuid().optional(),
+  agent: z.string().uuid().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  slaStatus: z.enum(["breached", "at_risk", "compliant"]).optional(),
+  sort: z.string().default("-createdAt"),
+});
 
 // ── Ticket Number Generation ───────────────────────────────────────────────
 
@@ -104,6 +125,235 @@ async function createAssignmentNotification(
   if (notifications.length > 0) {
     await prisma.notification.createMany({ data: notifications });
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GET /api/v1/complaints
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/v1/complaints
+ *
+ * Lists, searches, and filters complaints with full pagination support.
+ * Requires `complaint:read:all` permission.
+ *
+ * Query parameters:
+ *   - page:      integer (1-based, default 1)
+ *   - pageSize:  integer (1–100, default 20)
+ *   - search:    string  — matches ticketNumber, title, description
+ *   - status:    string  — comma-separated (e.g. "open,assigned,in_progress")
+ *   - priority:  string  — comma-separated (e.g. "high,critical")
+ *   - severity:  string  — comma-separated (e.g. "major,critical")
+ *   - product:   UUID    — filter by product
+ *   - team:      UUID    — filter by assigned team
+ *   - agent:     UUID    — filter by assigned agent
+ *   - dateFrom:  ISO date — filter complaints created on or after
+ *   - dateTo:    ISO date — filter complaints created on or before
+ *   - slaStatus: "breached" | "at_risk" | "compliant" — SLA deadline filter
+ *   - sort:      string  — e.g. "-createdAt,+priority" (default "-createdAt")
+ *
+ * Responses:
+ *   200 – Paginated list of complaints
+ */
+export async function GET(request: Request) {
+  const ctx: Record<string, unknown> = {};
+
+  try {
+    // ── Authorization ────────────────────────────────────────────────
+    const auth = await requirePermissions(request, Permissions.COMPLAINT_READ_ALL);
+    if (!auth.allowed) return auth.response;
+    ctx.userId = auth.user.userId;
+
+    // ── Parse Query Parameters ───────────────────────────────────────
+    const url = new URL(request.url);
+    const queryParams: Record<string, string> = {};
+    url.searchParams.forEach((value, key) => {
+      queryParams[key] = value;
+    });
+
+    const parsed = listComplaintsSchema.safeParse(queryParams);
+    if (!parsed.success) {
+      const details = parsed.error.issues.map((issue) => ({
+        field: issue.path.join("."),
+        message: issue.message,
+        constraint: issue.code,
+      }));
+      return validationErrorResponse(details);
+    }
+
+    const { page, pageSize, search, status, priority, severity, product, team, agent, dateFrom, dateTo, slaStatus, sort } = parsed.data;
+
+    // ── Build where clause ───────────────────────────────────────────
+    const where: Record<string, unknown> = {
+      deletedAt: null,
+    };
+
+    // Text search: matches ticketNumber, title, description
+    if (search) {
+      where.OR = [
+        { ticketNumber: { contains: search, mode: "insensitive" } },
+        { title: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    // Status filter: comma-separated list → Prisma enum values (uppercase)
+    if (status) {
+      const statusValues = status.split(",").map((s) => {
+        const map: Record<string, string> = {
+          open: "OPEN",
+          assigned: "ASSIGNED",
+          in_progress: "IN_PROGRESS",
+          waiting_for_customer: "WAITING_CUSTOMER",
+          resolved: "RESOLVED",
+          reopened: "REOPENED",
+          closed: "CLOSED",
+          escalated: "ESCALATED",
+        };
+        return map[s.trim().toLowerCase()] ?? s.trim().toUpperCase();
+      }).filter(Boolean);
+      if (statusValues.length > 0) {
+        where.currentStatus = { in: statusValues };
+      }
+    }
+
+    // Priority filter: comma-separated → Prisma enum values
+    if (priority) {
+      const priorityValues = priority.split(",").map((p) => {
+        const map: Record<string, string> = {
+          low: "LOW",
+          medium: "MEDIUM",
+          high: "HIGH",
+          critical: "CRITICAL",
+        };
+        return map[p.trim().toLowerCase()];
+      }).filter(Boolean);
+      if (priorityValues.length > 0) {
+        where.priority = { in: priorityValues };
+      }
+    }
+
+    // Severity filter: comma-separated → Prisma enum values
+    if (severity) {
+      const severityValues = severity.split(",").flatMap((s) => {
+        const map: Record<string, string[]> = {
+          minor: ["LOW"],
+          major: ["MEDIUM"],
+          critical: ["HIGH", "SEVERE"],
+        };
+        return map[s.trim().toLowerCase()] ?? [];
+      });
+      if (severityValues.length > 0) {
+        where.severity = { in: severityValues };
+      }
+    }
+
+    // UUID filters
+    if (product) where.productId = product;
+    if (team) where.assignedTeamId = team;
+    if (agent) where.assignedAgentId = agent;
+
+    // Date range filter
+    if (dateFrom || dateTo) {
+      const createdAtFilter: Record<string, Date> = {};
+      if (dateFrom) createdAtFilter.gte = new Date(dateFrom);
+      if (dateTo) createdAtFilter.lte = new Date(dateTo);
+      where.createdAt = createdAtFilter;
+    }
+
+    // ── SLA status filter (post-query) ─────────────────────────────
+    // We'll apply this after fetching if needed, since it requires
+    // comparing deadline fields against the current time.
+    const needsSlaFilter = !!slaStatus;
+
+    // ── Parse sort ───────────────────────────────────────────────────
+    const orderBy: Record<string, string>[] = [];
+    const sortFields = sort.split(",");
+    for (const field of sortFields) {
+      const trimmed = field.trim();
+      if (trimmed.startsWith("-")) {
+        orderBy.push({ [mapComplaintSortField(trimmed.slice(1))]: "desc" });
+      } else if (trimmed.startsWith("+")) {
+        orderBy.push({ [mapComplaintSortField(trimmed.slice(1))]: "asc" });
+      } else {
+        orderBy.push({ [mapComplaintSortField(trimmed)]: "asc" });
+      }
+    }
+
+    // ── Execute query ────────────────────────────────────────────────
+    const skip = (page - 1) * pageSize;
+
+    let [complaints, totalItems] = await Promise.all([
+      prisma.complaint.findMany({
+        where: where as any,
+        orderBy,
+        skip,
+        take: pageSize,
+        select: complaintSelect,
+      }),
+      prisma.complaint.count({ where: where as any }),
+    ]);
+
+    // ── Post-query SLA status filter ─────────────────────────────────
+    // Note: SLA filtering is applied post-query since it requires
+    // runtime date comparison. totalItems is kept from the pre-filter
+    // count as an approximation; pagination accuracy may vary.
+    if (needsSlaFilter && complaints.length > 0) {
+      const now = new Date();
+      complaints = complaints.filter((c) => {
+        const deadline = c.slaResolutionDeadline ?? c.slaFirstResponseDeadline;
+        if (!deadline) return slaStatus === "compliant";
+        const diff = deadline.getTime() - now.getTime();
+        const hoursLeft = diff / (1000 * 60 * 60);
+        switch (slaStatus) {
+          case "breached": return diff < 0;
+          case "at_risk": return diff >= 0 && hoursLeft <= 4;
+          case "compliant": return diff > 0 && hoursLeft > 4;
+          default: return true;
+        }
+      });
+      logger.warn("SLA filter applied post-query — totalItems is approximate", {
+        ...ctx,
+        slaStatus,
+        preFilterCount: totalItems,
+        postFilterCount: complaints.length,
+      });
+    }
+
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    logger.info("Complaints listed", {
+      ...ctx,
+      page,
+      pageSize,
+      totalItems,
+      filters: { search, status, priority, severity, product, team, agent, dateFrom, dateTo, slaStatus, sort },
+    });
+
+    return successResponse(complaints.map(toComplaintResponse), {
+      page,
+      pageSize,
+      totalItems,
+      totalPages,
+    });
+  } catch (error) {
+    logger.error("Complaint listing failed", ctx, error);
+    return internalErrorResponse("Failed to list complaints");
+  }
+}
+
+// ── Sort Field Mapping ─────────────────────────────────────────────────────
+
+function mapComplaintSortField(field: string): string {
+  const fieldMap: Record<string, string> = {
+    createdAt: "createdAt",
+    updatedAt: "updatedAt",
+    priority: "priority",
+    severity: "severity",
+    status: "currentStatus",
+    ticketNumber: "ticketNumber",
+  };
+  return fieldMap[field] ?? "createdAt";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
