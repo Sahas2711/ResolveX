@@ -3,7 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getAccessToken, useAuth } from "@/hooks/useAuth";
+import { Permissions } from "@/lib/permissions";
 import AppNavigation from "@/components/AppNavigation";
+import StaffMetricsWidget from "@/components/dashboard/StaffMetricsWidget";
+import TeamMetricsWidget from "@/components/dashboard/TeamMetricsWidget";
+import ProductAnalyticsWidget from "@/components/dashboard/ProductAnalyticsWidget";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -441,7 +445,31 @@ function Section({ title, subtitle, icon, children, className = "" }: {
 export default function DashboardPage() {
   const router = useRouter();
   const auth = useAuth();
-  const { isAuthenticated, isLoading: authLoading } = auth;
+  const { isAuthenticated, isLoading: authLoading, profile } = auth;
+
+  // ── Tab navigation ────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const tabs = [
+    { id: "overview", label: "Overview", icon: "grid" },
+    ...(profile?.permissions.includes(Permissions.DASHBOARD_STAFF)
+      ? [{ id: "staff", label: "My Performance", icon: "user" }]
+      : []),
+    ...(profile?.permissions.includes(Permissions.DASHBOARD_TEAM)
+      ? [{ id: "team", label: "Teams", icon: "users" }]
+      : []),
+    ...(profile?.permissions.includes(Permissions.DASHBOARD_PRODUCT)
+      ? [{ id: "product", label: "Products", icon: "box" }]
+      : []),
+  ] as const;
+
+  // Reset to overview when switching permissions
+  useEffect(() => {
+    const tabIds = tabs.map((t) => t.id);
+    if (!tabIds.includes(activeTab as never)) {
+      setActiveTab("overview");
+    }
+  }, [tabs, activeTab]);
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [isFetching, setIsFetching] = useState(true);
@@ -520,7 +548,51 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {error ? (
+        {/* ── Tab Navigation ── */}
+        <div className="mb-8 flex gap-1 rounded-2xl p-1"
+          style={{
+            background: "rgba(10,14,20,0.4)",
+            border: "1px solid rgba(200,230,201,0.04)",
+          }}
+        >
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="flex-1 rounded-xl px-4 py-2 text-xs font-medium transition-all duration-300"
+              style={{
+                background: activeTab === tab.id
+                  ? "linear-gradient(135deg, rgba(200,230,201,0.1), rgba(200,230,201,0.04))"
+                  : "transparent",
+                color: activeTab === tab.id
+                  ? "var(--color-phosphor)"
+                  : "rgba(240,244,248,0.3)",
+                border: activeTab === tab.id
+                  ? "1px solid rgba(200,230,201,0.1)"
+                  : "1px solid transparent",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab !== "overview" && (
+          <div
+            className="animate-fade-in rounded-[2rem] p-5 sm:p-7"
+            style={{
+              background: "linear-gradient(135deg, rgba(19,26,36,0.55), rgba(26,31,40,0.45))",
+              backdropFilter: "blur(24px) saturate(0.8)",
+              border: "1px solid rgba(200,230,201,0.04)",
+            }}
+          >
+            {activeTab === "staff" && <StaffMetricsWidget staffId={profile?.id ?? ""} />}
+            {activeTab === "team" && <TeamMetricsWidget />}
+            {activeTab === "product" && <ProductAnalyticsWidget />}
+          </div>
+        )}
+
+        {activeTab === "overview" && (error ? (
           <div className="flex flex-col items-center gap-4 py-20 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full"
               style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)" }}
@@ -698,7 +770,7 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        ) : null}
+        ) : null)}
       </div>
     </main>
   );
