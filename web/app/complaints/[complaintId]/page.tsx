@@ -2365,13 +2365,13 @@ export default function ComplaintDetailPage() {
 
               {/* ── Comment Section ── */}
               {/* ── Attachment Section ── */}
-              <AttachmentSection complaintId={complaintId} canUpload={canUploadAttachments} currentUserId={auth.user?.userId ?? ""} />
+              <AttachmentSection complaintId={complaintId} canUpload={canUploadAttachments} currentUserId={profile?.id ?? ""} />
 
               {/* ── Timeline Section ── */}
               <TimelineSection complaintId={complaintId} />
 
               {/* ── Comment Section ── */}
-              <CommentSection complaintId={complaintId} canComment={canComment} currentUserId={auth.user?.userId ?? ""} />
+              <CommentSection complaintId={complaintId} canComment={canComment} currentUserId={profile?.id ?? ""} />
             </div>
           </>
         ) : null}

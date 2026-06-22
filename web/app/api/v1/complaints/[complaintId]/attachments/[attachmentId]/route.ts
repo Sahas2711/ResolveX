@@ -57,6 +57,7 @@ export async function DELETE(
         id: true,
         uploadedBy: true,
         storageUrl: true,
+        storagePublicId: true,
         fileName: true,
         complaint: {
           select: { assignedTeamId: true },
