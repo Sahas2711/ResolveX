@@ -83,6 +83,7 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     Permissions.COMPLAINT_READ_OWN,
     Permissions.COMPLAINT_COMMENT,
     Permissions.COMPLAINT_ATTACHMENT,
+    Permissions.PRODUCT_READ,
   ],
 
   [Roles.SUPPORT_AGENT]: [
@@ -92,6 +93,7 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     Permissions.COMPLAINT_RESOLVE,
     Permissions.COMPLAINT_COMMENT,
     Permissions.COMPLAINT_ATTACHMENT,
+    Permissions.PRODUCT_READ,
     Permissions.DASHBOARD_STAFF,
   ],
 
@@ -106,6 +108,7 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
     Permissions.COMPLAINT_REOPEN,
     Permissions.COMPLAINT_COMMENT,
     Permissions.COMPLAINT_ATTACHMENT,
+    Permissions.PRODUCT_READ,
     Permissions.DASHBOARD_STAFF,
     Permissions.DASHBOARD_TEAM,
     Permissions.TEAM_READ,
