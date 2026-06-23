@@ -102,9 +102,23 @@ export async function DELETE(
       }
     }
 
-    // -- Delete from database -----------------------------------------
-    await prisma.attachment.delete({
-      where: { id: attachmentId },
+    // ── Delete from database and create timeline event in transaction ──
+    await prisma.$transaction(async (tx: any) => {
+      await tx.attachment.delete({
+        where: { id: attachmentId },
+      });
+
+      await tx.complaintTimeline.create({
+        data: {
+          complaintId,
+          eventType: "ATTACHMENT",
+          actorId: auth.user.userId,
+          eventData: {
+            action: "deleted",
+            fileName: existing.fileName,
+          } as any,
+        },
+      });
     });
 
     logger.info("Attachment deleted", {

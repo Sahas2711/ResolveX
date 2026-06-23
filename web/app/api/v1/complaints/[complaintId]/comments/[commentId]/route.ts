@@ -182,9 +182,24 @@ export async function DELETE(
       }
     }
 
-    // -- Delete the comment -------------------------------------------
-    await prisma.comment.delete({
-      where: { id: commentId },
+
+    // ── Delete the comment and create timeline event in transaction ────
+    await prisma.$transaction(async (tx: any) => {
+      await tx.comment.delete({
+        where: { id: commentId },
+      });
+
+      await tx.complaintTimeline.create({
+        data: {
+          complaintId,
+          eventType: "COMMENT",
+          actorId: auth.user.userId,
+          eventData: {
+            action: "deleted",
+            commentId,
+          } as any,
+        },
+      });
     });
 
     logger.info("Comment deleted", ctx);

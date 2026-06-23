@@ -236,18 +236,27 @@ export default function ComplaintsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [severityFilter, setSeverityFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const canCreate = profile ? checkPermissions(auth, [Permissions.COMPLAINT_CREATE]).allowed : false;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // -- Fetch complaints -----------------------------------------------------
-  const fetchComplaints = useCallback(async (p: number, q: string, s: string) => {
+  // ── Fetch complaints ─────────────────────────────────────────────────────
+  const fetchComplaints = useCallback(async (p: number, q: string, s: string, pr: string, se: string, dF: string, dT: string) => {
     setIsFetching(true);
     try {
       const token = getAccessToken();
       const params = new URLSearchParams({ page: String(p), pageSize: "20" });
       if (q) params.set("search", q);
       if (s && s !== "all") params.set("status", s);
+      if (pr && pr !== "all") params.set("priority", pr);
+      if (se && se !== "all") params.set("severity", se);
+      if (dF) params.set("dateFrom", dF);
+      if (dT) params.set("dateTo", dT);
 
       const res = await fetch(`/api/v1/complaints?${params}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -273,9 +282,9 @@ export default function ComplaintsPage() {
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchComplaints(page, search, statusFilter), 300);
+    debounceRef.current = setTimeout(() => fetchComplaints(page, search, statusFilter, priorityFilter, severityFilter, dateFrom, dateTo), 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [page, search, statusFilter, authLoading, isAuthenticated, fetchComplaints]);
+  }, [page, search, statusFilter, priorityFilter, severityFilter, dateFrom, dateTo, authLoading, isAuthenticated, fetchComplaints]);
 
   // -- Auth gate ------------------------------------------------------------
   useEffect(() => {
@@ -338,6 +347,78 @@ export default function ComplaintsPage() {
           ))}
         </div>
       </div>
+        {/* ── Priority & Severity filters ── */}
+        <div className="mx-auto mb-3 flex max-w-4xl flex-wrap items-center gap-2">
+          <span className="mr-1 text-[10px] font-medium tracking-wider uppercase text-solvent/20">Priority</span>
+          {(["all", "low", "medium", "high", "critical"] as const).map((p) => (
+            <button key={p} onClick={() => { setPriorityFilter(p); setPage(1); }}
+              className="rounded-full px-2.5 py-1 text-[10px] font-medium tracking-wide uppercase transition-all duration-300"
+              style={{
+                background: priorityFilter === p ? "rgba(255, 111, 60, 0.08)" : "rgba(240, 244, 248, 0.02)",
+                border: priorityFilter === p ? "1px solid rgba(255, 111, 60, 0.15)" : "1px solid rgba(240, 244, 248, 0.04)",
+                color: priorityFilter === p ? "var(--color-magma)" : "rgba(240, 244, 248, 0.25)",
+              }}
+            >
+              {p}
+            </button>
+          ))}
+          <span className="ml-2 mr-1 text-[10px] font-medium tracking-wider uppercase text-solvent/20">Severity</span>
+          {(["all", "minor", "major", "critical"] as const).map((s) => (
+            <button key={s} onClick={() => { setSeverityFilter(s); setPage(1); }}
+              className="rounded-full px-2.5 py-1 text-[10px] font-medium tracking-wide uppercase transition-all duration-300"
+              style={{
+                background: severityFilter === s ? "rgba(167, 243, 208, 0.08)" : "rgba(240, 244, 248, 0.02)",
+                border: severityFilter === s ? "1px solid rgba(167, 243, 208, 0.15)" : "1px solid rgba(240, 244, 248, 0.04)",
+                color: severityFilter === s ? "var(--color-aurora)" : "rgba(240, 244, 248, 0.25)",
+              }}
+            >
+              {s === "critical" ? "crit" : s}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Advanced Filters toggle ── */}
+        <div className="mx-auto mb-3 max-w-4xl">
+          <button onClick={() => setShowAdvanced((v) => !v)}
+            className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider uppercase text-solvent/20 transition-colors hover:text-solvent/40"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+              className="transition-transform duration-200"
+              style={{ transform: showAdvanced ? "rotate(90deg)" : "rotate(0deg)" }}
+            >
+              <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Advanced Filters
+          </button>
+        </div>
+
+        {/* ── Advanced Filters Panel ── */}
+        {showAdvanced && (
+          <div className="mx-auto mb-3 max-w-4xl animate-slide-up rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4"
+            style={{ animationFillMode: "both" }}
+          >
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="flex-1 min-w-[160px]">
+                <label className="mb-1 block text-[10px] font-medium tracking-wider uppercase text-solvent/20">Date From</label>
+                <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                  className="input-plasma w-full rounded-lg px-3 py-2 text-[13px]"
+                  style={{ border: "1px solid rgba(240, 244, 248, 0.06)" }}
+                />
+              </div>
+              <div className="flex-1 min-w-[160px]">
+                <label className="mb-1 block text-[10px] font-medium tracking-wider uppercase text-solvent/20">Date To</label>
+                <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                  className="input-plasma w-full rounded-lg px-3 py-2 text-[13px]"
+                  style={{ border: "1px solid rgba(240, 244, 248, 0.06)" }}
+                />
+              </div>
+              <button onClick={() => { setDateFrom(""); setDateTo(""); setPage(1); }}
+                className="rounded-lg px-4 py-2 text-[11px] font-medium tracking-wider uppercase transition-all duration-300"
+                style={{ border: "1px solid rgba(240, 244, 248, 0.06)", color: "rgba(240, 244, 248, 0.25)" }}
+              >Clear</button>
+            </div>
+          </div>
+        )}
 
       {/* -- Complaint list -- */}
       <div className="mx-auto max-w-4xl">
