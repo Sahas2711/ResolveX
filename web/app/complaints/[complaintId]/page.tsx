@@ -1050,8 +1050,7 @@ function TimelineSection({
     switch (type) {
       case "status_change": return "🔄";
       case "assignment":    return "👤";
-      case "update":
-        return d.changes ? Object.keys(d.changes).join(', ') + ' updated' : '';
+      case "update":       return "📝";
       case "comment":       return "💬";
       case "escalation":    return "⬆️";
       case "resolution":    return "✅";
@@ -1064,8 +1063,7 @@ function TimelineSection({
     switch (type) {
       case "status_change": return "Status Changed";
       case "assignment":    return "Assigned";
-      case "update":
-        return d.changes ? Object.keys(d.changes).join(', ') + ' updated' : '';
+      case "update":       return "Updated";
       case "comment":       return eventData?.action === "deleted" ? "Comment Deleted" : "Comment Added";
       case "escalation":    return "Escalated";
       case "resolution":    return "Resolved";

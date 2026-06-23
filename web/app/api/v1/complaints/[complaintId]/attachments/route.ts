@@ -164,7 +164,7 @@ export async function POST(
       file.name,
       complaintId,
     );
-console.log("Upload result:", uploadResult);
+// console.log("Upload result:", uploadResult);
     // -- Create database record and timeline event in transaction -----
     const attachment = await prisma.$transaction(async (tx: any) => {
       // 1. Create the attachment record
@@ -180,7 +180,7 @@ console.log("Upload result:", uploadResult);
         },
         select: attachmentSelect,
       });
-      console.log("Attachment record created:", created);
+//      console.log("Attachment record created:", created);
       // 2. Create a timeline event
       await tx.complaintTimeline.create({
         data: {
@@ -198,7 +198,7 @@ console.log("Upload result:", uploadResult);
 
       return created;
     });
-    console.log("Transaction completed, attachment:", attachment);
+    //console.log("Transaction completed, attachment:", attachment);
     // -- Send notifications (fire-and-forget) -------------------------
     const notifications: Array<{
       userId: string;
