@@ -17,7 +17,7 @@ import {
   toUserResponse,
 } from "@/lib/validators/user";
 
-// ── GET: List Users ────────────────────────────────────────────────────────
+// -- GET: List Users --------------------------------------------------------
 
 /**
  * GET /api/v1/users
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
 
     const { page, pageSize, search, status, sort } = parsed.data;
 
-    // ── Build filters ────────────────────────────────────────────────
+    // -- Build filters ------------------------------------------------
     const where: Record<string, unknown> = {
       deletedAt: null,
     };
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // ── Parse sort ───────────────────────────────────────────────────
+    // -- Parse sort ---------------------------------------------------
     const orderBy: Record<string, string>[] = [];
     const sortFields = sort.split(",");
     for (const field of sortFields) {
@@ -98,7 +98,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // ── Execute query ────────────────────────────────────────────────
+    // -- Execute query ------------------------------------------------
     const skip = (page - 1) * pageSize;
 
     const [users, totalItems] = await Promise.all([
@@ -150,7 +150,7 @@ export async function GET(request: Request) {
   }
 }
 
-// ── Sort Field Mapping ─────────────────────────────────────────────────────
+// -- Sort Field Mapping -----------------------------------------------------
 
 function mapSortField(field: string): string {
   const fieldMap: Record<string, string> = {

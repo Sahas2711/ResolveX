@@ -59,7 +59,7 @@ export async function POST(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_UPDATE_STATUS);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
@@ -68,11 +68,11 @@ export async function POST(
     const userPermissions = await getUserPermissions(auth.user.userId);
     ctx.userPermissions = userPermissions;
 
-    // ── Extract complaintId ──────────────────────────────────────────
+    // -- Extract complaintId ------------------------------------------
     const { complaintId } = await params;
     ctx.complaintId = complaintId;
 
-    // ── Verify complaint exists ──────────────────────────────────────
+    // -- Verify complaint exists --------------------------------------
     const complaint = await prisma.complaint.findFirst({
       where: { id: complaintId, deletedAt: null },
       select: {
@@ -92,7 +92,7 @@ export async function POST(
     ctx.ticketNumber = complaint.ticketNumber;
     ctx.currentStatus = complaint.currentStatus;
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = statusTransitionSchema.safeParse(body);
 
@@ -108,7 +108,7 @@ export async function POST(
     const { transitionId, remarks } = parsed.data;
     ctx.transitionId = transitionId;
 
-    // ── Validate the transition — check engine permissions too ───────
+    // -- Validate the transition — check engine permissions too -------
     const def = validateTransition(complaint.currentStatus, transitionId);
 
     if (!def) {
@@ -137,7 +137,7 @@ export async function POST(
       }]);
     }
 
-    // ── Execute the transition in a transaction ───────────────────────
+    // -- Execute the transition in a transaction -----------------------
     const updated = await prisma.$transaction(async (tx: any) => {
       // Execute the status transition first
       await executeTransition(tx, {

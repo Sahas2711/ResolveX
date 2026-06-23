@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, type FormEvent, type ChangeEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getAccessToken, useAuth } from "@/hooks/useAuth";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface FieldErrors {
   name?: string;
@@ -16,18 +16,18 @@ interface ServerError {
   message: string;
 }
 
-// ── Particle Field ─────────────────────────────────────────────────────────
+// -- Particle Field ---------------------------------------------------------
 
 function ParticleField() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  const particles = useMemo(() =>
+  const [particles] = useState(() =>
     Array.from({ length: 12 }, (_, i) => ({
       id: i, x: `${Math.random() * 100}%`, y: `${Math.random() * 100}%`,
       size: 1.2 + Math.random() * 2, delay: Math.random() * 8,
       duration: 5 + Math.random() * 7, dx: `${-30 + Math.random() * 60}px`,
-    })), []
+    }))
   );
 
   if (!mounted) return null;
@@ -50,7 +50,7 @@ function ParticleField() {
   );
 }
 
-// ── Field Error ────────────────────────────────────────────────────────────
+// -- Field Error ------------------------------------------------------------
 
 function FieldError({ message }: { message: string }) {
   if (!message) return null;
@@ -83,7 +83,7 @@ export default function EditUserPage() {
 
   const nameRef = useRef<HTMLInputElement>(null);
 
-  // ── Fetch user data ──────────────────────────────────────────────────────
+  // -- Fetch user data ------------------------------------------------------
   useEffect(() => {
     if (authLoading || !isAuthenticated || !userId) return;
     (async () => {
@@ -108,7 +108,7 @@ export default function EditUserPage() {
     })();
   }, [userId, authLoading, isAuthenticated]);
 
-  // ── Validation ───────────────────────────────────────────────────────────
+  // -- Validation -----------------------------------------------------------
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
     const trimmedName = name.trim();
@@ -120,7 +120,7 @@ export default function EditUserPage() {
     return errors;
   }
 
-  // ── Submit ───────────────────────────────────────────────────────────────
+  // -- Submit ---------------------------------------------------------------
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setServerError(null);
@@ -173,7 +173,7 @@ export default function EditUserPage() {
     finally { setIsSubmitting(false); }
   }
 
-  // ── Field change ─────────────────────────────────────────────────────────
+  // -- Field change ---------------------------------------------------------
   function handleFieldChange(field: keyof FieldErrors, setter: (v: string) => void) {
     return (e: ChangeEvent<HTMLInputElement>) => {
       setter(e.target.value);
@@ -182,13 +182,13 @@ export default function EditUserPage() {
     };
   }
 
-  // ── Auth gate ────────────────────────────────────────────────────────────
+  // -- Auth gate ------------------------------------------------------------
   useEffect(() => { if (!authLoading && !isAuthenticated) router.push("/login"); }, [authLoading, isAuthenticated, router]);
 
   if (authLoading) return <main className="flex min-h-dvh items-center justify-center"><span className="spinner-ring" /></main>;
   if (!isAuthenticated) return null;
 
-  // ── Success view ─────────────────────────────────────────────────────────
+  // -- Success view ---------------------------------------------------------
   if (isSuccess) {
     return (
       <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-4">
@@ -219,7 +219,7 @@ export default function EditUserPage() {
     );
   }
 
-  // ── Form ─────────────────────────────────────────────────────────────────
+  // -- Form -----------------------------------------------------------------
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-4 py-12">
       <ParticleField />

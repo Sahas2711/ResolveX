@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { PermissionKey, RoleName } from "@/lib/permissions";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 export interface UserProfile {
   id: string;
@@ -35,7 +35,7 @@ export interface AuthState {
   profile: UserProfile | null;
 }
 
-// ── Token helpers ──────────────────────────────────────────────────────────
+// -- Token helpers ----------------------------------------------------------
 
 const TOKEN_KEYS = {
   ACCESS: "accessToken",
@@ -93,7 +93,7 @@ export function isPersisted(): boolean {
   return localStorage.getItem(TOKEN_KEYS.REMEMBER) === "true";
 }
 
-// ── Base64 JWT decode ──────────────────────────────────────────────────────
+// -- Base64 JWT decode ------------------------------------------------------
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -115,7 +115,7 @@ export function isTokenExpired(token: string): boolean {
   return Date.now() >= payload.exp * 1000;
 }
 
-// ── Fetch user profile ─────────────────────────────────────────────────────
+// -- Fetch user profile -----------------------------------------------------
 
 async function fetchProfile(accessToken: string): Promise<UserProfile | null> {
   try {
@@ -130,7 +130,7 @@ async function fetchProfile(accessToken: string): Promise<UserProfile | null> {
   }
 }
 
-// ── useAuth hook ───────────────────────────────────────────────────────────
+// -- useAuth hook -----------------------------------------------------------
 
 /**
  * React hook for authentication state management.
@@ -191,7 +191,7 @@ export function useAuth(): AuthState {
   return state;
 }
 
-// ── usePermissions hook ────────────────────────────────────────────────────
+// -- usePermissions hook ----------------------------------------------------
 
 /**
  * Hook to check if the current user has ALL specified permissions.
@@ -249,7 +249,7 @@ export function usePermissions(
   return checkPermissions(useAuth(), requiredPermissions);
 }
 
-// ── useRoles hook ──────────────────────────────────────────────────────────
+// -- useRoles hook ----------------------------------------------------------
 
 /**
  * Hook to check if the current user has at least ONE of the specified roles.
@@ -307,7 +307,7 @@ export function useRoles(
   return checkRoles(useAuth(), requiredRoles);
 }
 
-// ── useRolePermissions hook ────────────────────────────────────────────────
+// -- useRolePermissions hook ------------------------------------------------
 
 /**
  * Hook that returns all permissions for a user's resolved roles.
@@ -335,7 +335,7 @@ export function useRolePermissions(): {
   return { permissions: profile.permissions, isLoading: false };
 }
 
-// ── useRequireAuth hook ────────────────────────────────────────────────────
+// -- useRequireAuth hook ----------------------------------------------------
 
 /**
  * Hook that redirects to /login if the user is not authenticated.

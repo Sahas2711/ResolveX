@@ -51,16 +51,16 @@ export async function POST(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_REOPEN);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract complaintId ──────────────────────────────────────────
+    // -- Extract complaintId ------------------------------------------
     const { complaintId } = await params;
     ctx.complaintId = complaintId;
 
-    // ── Verify complaint exists ──────────────────────────────────────
+    // -- Verify complaint exists --------------------------------------
     const complaint = await prisma.complaint.findFirst({
       where: { id: complaintId, deletedAt: null },
       select: {
@@ -79,7 +79,7 @@ export async function POST(
     ctx.ticketNumber = complaint.ticketNumber;
     ctx.currentStatus = complaint.currentStatus;
 
-    // ── Validate: must be RESOLVED or CLOSED ──────────────────────────
+    // -- Validate: must be RESOLVED or CLOSED --------------------------
     const reopenableStatuses = ["RESOLVED", "CLOSED"];
     if (!reopenableStatuses.includes(complaint.currentStatus)) {
       return conflictResponse(
@@ -88,7 +88,7 @@ export async function POST(
       );
     }
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = reopenComplaintSchema.safeParse(body);
 
@@ -103,7 +103,7 @@ export async function POST(
 
     const { reason } = parsed.data;
 
-    // ── Execute the reopen transition in a transaction ────────────────
+    // -- Execute the reopen transition in a transaction ----------------
     const updated = await prisma.$transaction(async (tx: any) => {
       await executeTransition(tx, {
         complaintId,

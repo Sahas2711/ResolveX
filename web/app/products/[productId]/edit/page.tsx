@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, type FormEvent, type ChangeEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getAccessToken, useAuth } from "@/hooks/useAuth";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface FieldErrors {
   name?: string;
@@ -17,31 +17,24 @@ interface ServerError {
   details?: Array<{ field: string; message: string }>;
 }
 
-// ── Constants ──────────────────────────────────────────────────────────────
+// -- Constants --------------------------------------------------------------
 
 const DESCRIPTION_MAX = 500;
 
-// ── Particle Field ─────────────────────────────────────────────────────────
+// -- Particle Field ---------------------------------------------------------
 
 function ParticleField() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-
-  const particles = useMemo(
-    () =>
-      Array.from({ length: 12 }, (_, i) => ({
-        id: i,
-        x: `${Math.random() * 100}%`,
-        y: `${Math.random() * 100}%`,
-        size: 1.2 + Math.random() * 2,
-        delay: Math.random() * 8,
-        duration: 5 + Math.random() * 7,
-        dx: `${-30 + Math.random() * 60}px`,
-      })),
-    [],
+  const [particles] = useState(() =>
+    Array.from({ length: 12 }, (_, i) => ({
+      id: i,
+      x: `${Math.random() * 100}%`,
+      y: `${Math.random() * 100}%`,
+      size: 1.2 + Math.random() * 2,
+      delay: Math.random() * 8,
+      duration: 5 + Math.random() * 7,
+      dx: `${-30 + Math.random() * 60}px`,
+    }))
   );
-
-  if (!mounted) return null;
 
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
@@ -61,14 +54,14 @@ function ParticleField() {
   );
 }
 
-// ── Field Error ────────────────────────────────────────────────────────────
+// -- Field Error ------------------------------------------------------------
 
 function FieldError({ message }: { message: string }) {
   if (!message) return null;
   return <p className="mt-1.5 animate-slide-up text-[12px] font-medium text-magma">{message}</p>;
 }
 
-// ── Char Ring ──────────────────────────────────────────────────────────────
+// -- Char Ring --------------------------------------------------------------
 
 function CharRing({ current, max }: { current: number; max: number }) {
   const fraction = current / max;
@@ -87,7 +80,7 @@ function CharRing({ current, max }: { current: number; max: number }) {
   );
 }
 
-// ── Status Toggle ──────────────────────────────────────────────────────────
+// -- Status Toggle ----------------------------------------------------------
 
 function StatusToggle({ value, onChange, disabled }: {
   value: "active" | "inactive"; onChange: (v: "active" | "inactive") => void; disabled: boolean;
@@ -153,7 +146,7 @@ export default function EditProductPage() {
 
   const nameRef = useRef<HTMLInputElement>(null);
 
-  // ── Fetch product data ───────────────────────────────────────────────────
+  // -- Fetch product data ---------------------------------------------------
   useEffect(() => {
     if (authLoading || !isAuthenticated || !productId) return;
     (async () => {
@@ -179,7 +172,7 @@ export default function EditProductPage() {
     })();
   }, [productId, authLoading, isAuthenticated]);
 
-  // ── Validation ───────────────────────────────────────────────────────────
+  // -- Validation -----------------------------------------------------------
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
     const trimmedName = name.trim();
@@ -189,7 +182,7 @@ export default function EditProductPage() {
     return errors;
   }
 
-  // ── Submit ───────────────────────────────────────────────────────────────
+  // -- Submit ---------------------------------------------------------------
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setServerError(null);
@@ -238,7 +231,7 @@ export default function EditProductPage() {
     finally { setIsSubmitting(false); }
   }
 
-  // ── Field change ─────────────────────────────────────────────────────────
+  // -- Field change ---------------------------------------------------------
   function handleFieldChange(field: keyof FieldErrors, setter: (v: string) => void) {
     return (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setter(e.target.value);
@@ -247,13 +240,13 @@ export default function EditProductPage() {
     };
   }
 
-  // ── Auth gate ────────────────────────────────────────────────────────────
+  // -- Auth gate ------------------------------------------------------------
   useEffect(() => { if (!authLoading && !isAuthenticated) router.push("/login"); }, [authLoading, isAuthenticated, router]);
 
   if (authLoading) return <main className="flex min-h-dvh items-center justify-center"><span className="spinner-ring" /></main>;
   if (!isAuthenticated) return null;
 
-  // ── Success view ─────────────────────────────────────────────────────────
+  // -- Success view ---------------------------------------------------------
   if (isSuccess) {
     return (
       <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-4">
@@ -284,7 +277,7 @@ export default function EditProductPage() {
     );
   }
 
-  // ── Loading / Error / Form ───────────────────────────────────────────────
+  // -- Loading / Error / Form -----------------------------------------------
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-4 py-12">
       <ParticleField />

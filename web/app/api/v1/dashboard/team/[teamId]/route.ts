@@ -22,7 +22,7 @@ import {
   internalErrorResponse,
 } from "@/lib/response";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface TeamMetricsResponse {
   teamId: string;
@@ -70,16 +70,16 @@ export async function GET(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.DASHBOARD_TEAM);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract teamId ───────────────────────────────────────────────
+    // -- Extract teamId -----------------------------------------------
     const { teamId } = await params;
     ctx.teamId = teamId;
 
-    // ── Verify team exists and is not deleted ────────────────────────
+    // -- Verify team exists and is not deleted ------------------------
     const team = await prisma.team.findFirst({
       where: { id: teamId, deletedAt: null },
       select: { id: true, teamName: true },
@@ -89,7 +89,7 @@ export async function GET(
       return notFoundResponse("Team not found");
     }
 
-    // ── Parse optional date range ────────────────────────────────────
+    // -- Parse optional date range ------------------------------------
     const url = new URL(request.url);
     const dateFrom = url.searchParams.get("dateFrom");
     const dateTo = url.searchParams.get("dateTo");
@@ -105,11 +105,11 @@ export async function GET(
     ctx.dateFrom = dateFrom ?? "none";
     ctx.dateTo = dateTo ?? "none";
 
-    // ── 30-day cutoff for backlog ────────────────────────────────────
+    // -- 30-day cutoff for backlog ------------------------------------
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // ── Run all queries in parallel ──────────────────────────────────
+    // -- Run all queries in parallel ----------------------------------
     const [
       statusCounts,
       backlogCount,
@@ -172,19 +172,19 @@ export async function GET(
       }),
     ]);
 
-    // ── Build status map ─────────────────────────────────────────────
+    // -- Build status map ---------------------------------------------
     const statusMap = new Map<string, number>();
     for (const s of statusCounts) {
       statusMap.set(s.currentStatus, s._count.id);
     }
 
-    // ── Compute workload ─────────────────────────────────────────────
+    // -- Compute workload ---------------------------------------------
     const workload = OPEN_STATUSES.reduce(
       (sum, s) => sum + (statusMap.get(s) ?? 0),
       0,
     );
 
-    // ── Compute resolution rate ──────────────────────────────────────
+    // -- Compute resolution rate --------------------------------------
     const resolvedCount = statusMap.get("RESOLVED") ?? 0;
     const closedCount = statusMap.get("CLOSED") ?? 0;
     const terminalCount = resolvedCount + closedCount;
@@ -194,7 +194,7 @@ export async function GET(
         ? Math.round((terminalCount / totalComplaints) * 100)
         : null;
 
-    // ── Compute average resolution time (hours) ──────────────────────
+    // -- Compute average resolution time (hours) ----------------------
     const totalResolutionMs = resolvedComplaints.reduce(
       (sum, c) => {
         if (c.resolvedAt) return sum + (c.resolvedAt.getTime() - c.createdAt.getTime());
@@ -207,7 +207,7 @@ export async function GET(
         ? Math.round((totalResolutionMs / resolvedComplaints.length / (1000 * 60 * 60)) * 100) / 100
         : null;
 
-    // ── Compute SLA compliance rate ──────────────────────────────────
+    // -- Compute SLA compliance rate ----------------------------------
     // SLA compliance = 1 - (breached / total) as percentage
     // Higher is better. 100% means no SLA breaches.
     const slaCompliance =

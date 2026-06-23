@@ -11,9 +11,9 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("🌱 Seeding ResolveX database...");
 
-  // ──────────────────────────────────────────────
+  // ----------------------------------------------
   // 1. Seed Permissions
-  // ──────────────────────────────────────────────
+  // ----------------------------------------------
   const permissionData = [
     // Complaints
     { name: "complaint:create", description: "Create new complaints" },
@@ -78,9 +78,9 @@ async function main() {
     permissions.map((p) => [p.name, p.id])
   );
 
-  // ──────────────────────────────────────────────
+  // ----------------------------------------------
   // 2. Seed Roles
-  // ──────────────────────────────────────────────
+  // ----------------------------------------------
   const roleData: Array<{
     name: string;
     description: string;
@@ -223,9 +223,9 @@ async function main() {
     }
   }
 
-  // ──────────────────────────────────────────────
+  // ----------------------------------------------
   // 3. Seed Admin User
-  // ──────────────────────────────────────────────
+  // ----------------------------------------------
   const adminPasswordHash = await bcrypt.hash("Admin@123", 12);
 
   const adminUser = await prisma.user.upsert({
@@ -258,9 +258,9 @@ async function main() {
   });
   console.log(`✅ Created admin user: ${adminUser.email}`);
 
-  // ──────────────────────────────────────────────
+  // ----------------------------------------------
   // 4. Seed Default Product Categories
-  // ──────────────────────────────────────────────
+  // ----------------------------------------------
   const productCategories = [
     { name: "Software", description: "Software products and applications" },
     { name: "Hardware", description: "Physical hardware devices" },
@@ -277,9 +277,9 @@ async function main() {
   }
   console.log(`✅ Created ${productCategories.length} product categories`);
 
-  // ──────────────────────────────────────────────
+  // ----------------------------------------------
   // 5. Seed Complaint Categories
-  // ──────────────────────────────────────────────
+  // ----------------------------------------------
   const complaintCategories = [
     { name: "Login Issue", description: "Problems with authentication and login" },
     { name: "Payment Failure", description: "Issues with payments and transactions" },

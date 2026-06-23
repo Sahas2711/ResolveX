@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect, type FormEvent, type ChangeEvent } from "react";
+import { useState, useRef, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { getAccessToken, useAuth } from "@/hooks/useAuth";
 import AppNavigation from "@/components/AppNavigation";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface Product {
   id: string;
@@ -25,7 +25,7 @@ interface ServerError {
   message: string;
 }
 
-// ── Constants ──────────────────────────────────────────────────────────────
+// -- Constants --------------------------------------------------------------
 
 const DESCRIPTION_MIN = 20;
 const DESCRIPTION_MAX = 5000;
@@ -56,19 +56,18 @@ const CATEGORIES = [
   "Other",
 ] as const;
 
-// ── Particle Background ────────────────────────────────────────────────────
+// -- Particle Background ----------------------------------------------------
 
 function ParticleField() {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { /* eslint-disable react-hooks/set-state-in-effect */ setMounted(true); /* eslint-enable react-hooks/set-state-in-effect */ }, []);
 
-  const particles = useMemo(
-    () => Array.from({ length: 18 }, (_, i) => ({
+  const [particles] = useState(() =>
+    Array.from({ length: 18 }, (_, i) => ({
       id: i, x: `${Math.random() * 100}%`, y: `${Math.random() * 100}%`,
       size: 1.5 + Math.random() * 2.5, delay: Math.random() * 8,
       duration: 5 + Math.random() * 7, dx: `${-30 + Math.random() * 60}px`,
-    })),
-    [],
+    }))
   );
 
   if (!mounted) return null;
@@ -94,14 +93,14 @@ function ParticleField() {
   );
 }
 
-// ── Field Error ────────────────────────────────────────────────────────────
+// -- Field Error ------------------------------------------------------------
 
 function FieldError({ message }: { message: string }) {
   if (!message) return null;
   return <p className="mt-1.5 animate-slide-up text-[12px] font-medium text-magma">{message}</p>;
 }
 
-// ── Character Count Ring ───────────────────────────────────────────────────
+// -- Character Count Ring ---------------------------------------------------
 
 function CharRing({ current, max }: { current: number; max: number }) {
   const fraction = current / max;
@@ -119,7 +118,7 @@ function CharRing({ current, max }: { current: number; max: number }) {
   );
 }
 
-// ── Priority Selector ──────────────────────────────────────────────────────
+// -- Priority Selector ------------------------------------------------------
 
 function PrioritySelector({ value, onChange, disabled }: {
   value: string; onChange: (v: string) => void; disabled: boolean;
@@ -143,7 +142,7 @@ function PrioritySelector({ value, onChange, disabled }: {
   );
 }
 
-// ── Severity Selector ──────────────────────────────────────────────────────
+// -- Severity Selector ------------------------------------------------------
 
 function SeveritySelector({ value, onChange, disabled }: {
   value: string; onChange: (v: string) => void; disabled: boolean;
@@ -167,7 +166,7 @@ function SeveritySelector({ value, onChange, disabled }: {
   );
 }
 
-// ── Main Create Complaint Page ─────────────────────────────────────────────
+// -- Main Create Complaint Page ---------------------------------------------
 
 export default function CreateComplaintPage() {
   const router = useRouter();
@@ -195,7 +194,7 @@ export default function CreateComplaintPage() {
   const productRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // ── Fetch products ────────────────────────────────────────────────────────
+  // -- Fetch products --------------------------------------------------------
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
     (async () => {
@@ -224,7 +223,7 @@ export default function CreateComplaintPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ── Validation ──────────────────────────────────────────────────────────
+  // -- Validation ----------------------------------------------------------
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
@@ -240,7 +239,7 @@ export default function CreateComplaintPage() {
     return errors;
   }
 
-  // ── Submit ──────────────────────────────────────────────────────────────
+  // -- Submit --------------------------------------------------------------
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -304,7 +303,7 @@ export default function CreateComplaintPage() {
     } finally { setIsSubmitting(false); }
   }
 
-  // ── Field change handlers ───────────────────────────────────────────────
+  // -- Field change handlers -----------------------------------------------
 
   function handleFieldChange(field: keyof FieldErrors, setter: (v: string) => void) {
     return (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -314,13 +313,13 @@ export default function CreateComplaintPage() {
     };
   }
 
-  // ── Auth gate ────────────────────────────────────────────────────────────
+  // -- Auth gate ------------------------------------------------------------
   useEffect(() => { if (!authLoading && !isAuthenticated) router.push("/login"); }, [authLoading, isAuthenticated, router]);
 
   if (authLoading) return <main className="flex min-h-dvh items-center justify-center"><span className="spinner-ring" /></main>;
   if (!isAuthenticated) return null;
 
-  // ── Success View ─────────────────────────────────────────────────────────
+  // -- Success View ---------------------------------------------------------
 
   if (isSuccess) {
     return (
@@ -363,7 +362,7 @@ export default function CreateComplaintPage() {
     );
   }
 
-  // ── Create Complaint Form ────────────────────────────────────────────────
+  // -- Create Complaint Form ------------------------------------------------
 
   const catValue = category === "__custom__" ? customCategory.trim() : category;
 
@@ -411,7 +410,7 @@ export default function CreateComplaintPage() {
         )}
 
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
-          {/* ── Product Select ── */}
+          {/* -- Product Select -- */}
           <div className="floating-label">
             <button
               ref={productRef}
@@ -461,7 +460,7 @@ export default function CreateComplaintPage() {
             <FieldError message={fieldErrors.productId ?? ""} />
           </div>
 
-          {/* ── Category ── */}
+          {/* -- Category -- */}
           <div>
             <div className="flex flex-wrap gap-2">
               {CATEGORIES.map((cat) => (
@@ -498,13 +497,13 @@ export default function CreateComplaintPage() {
             <FieldError message={fieldErrors.category ?? ""} />
           </div>
 
-          {/* ── Priority + Severity row ── */}
+          {/* -- Priority + Severity row -- */}
           <div className="flex flex-wrap gap-6">
             <PrioritySelector value={priority} onChange={setPriority} disabled={isSubmitting} />
             <SeveritySelector value={severity} onChange={setSeverity} disabled={isSubmitting} />
           </div>
 
-          {/* ── Description ── */}
+          {/* -- Description -- */}
           <div>
             <div className="floating-label">
               <textarea id="description" placeholder=" " rows={5}
@@ -531,7 +530,7 @@ export default function CreateComplaintPage() {
             </div>
           </div>
 
-          {/* ── Submit ── */}
+          {/* -- Submit -- */}
           <div className="pt-4">
             <button type="submit" disabled={isSubmitting}
               className="btn-phosphor flex w-full items-center justify-center gap-3 rounded-full py-3.5 text-[15px]"

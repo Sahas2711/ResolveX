@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ThemeProvider from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "ResolveX — Complaint Management System",
@@ -14,9 +15,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="min-h-dvh bg-abyss font-sans text-solvent antialiased">
-        {children}
+    <html lang="en" data-theme="dark">
+      <body className="min-h-dvh bg-abyss font-sans text-solvent antialiased transition-colors duration-300">
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

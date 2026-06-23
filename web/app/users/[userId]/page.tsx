@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { getAccessToken, useAuth, checkPermissions } from "@/hooks/useAuth";
 import { Permissions } from "@/lib/permissions";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface UserDetail {
   id: string;
@@ -27,23 +27,16 @@ interface Role {
   name: string;
 }
 
-// ── Particle Field ─────────────────────────────────────────────────────────
+// -- Particle Field ---------------------------------------------------------
 
 function ParticleField() {
-  const [particles, setParticles] = useState<Array<{
-    id: number; x: string; y: string; size: number;
-    delay: number; duration: number; dx: string;
-  }>>([]);
-
-  useEffect(() => {
-    setParticles(
-      Array.from({ length: 10 }, (_, i) => ({
-        id: i, x: `${Math.random() * 100}%`, y: `${Math.random() * 100}%`,
-        size: 1.2 + Math.random() * 2, delay: Math.random() * 8,
-        duration: 5 + Math.random() * 7, dx: `${-30 + Math.random() * 60}px`,
-      })),
-    );
-  }, []);
+  const [particles] = useState(() =>
+    Array.from({ length: 10 }, (_, i) => ({
+      id: i, x: `${Math.random() * 100}%`, y: `${Math.random() * 100}%`,
+      size: 1.2 + Math.random() * 2, delay: Math.random() * 8,
+      duration: 5 + Math.random() * 7, dx: `${-30 + Math.random() * 60}px`,
+    }))
+  );
 
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
@@ -63,7 +56,7 @@ function ParticleField() {
   );
 }
 
-// ── Delete Modal ───────────────────────────────────────────────────────────
+// -- Delete Modal -----------------------------------------------------------
 
 function DeleteModal({ userName, isDeleting, error, onConfirm, onCancel }: {
   userName: string; isDeleting: boolean; error: string | null;
@@ -123,7 +116,7 @@ function DeleteModal({ userName, isDeleting, error, onConfirm, onCancel }: {
   );
 }
 
-// ── Assign Role Modal ──────────────────────────────────────────────────────
+// -- Assign Role Modal ------------------------------------------------------
 
 function AssignRoleModal({ isOpen, isSubmitting, error, availableRoles, onClose, onSubmit }: {
   isOpen: boolean; isSubmitting: boolean; error: string | null;
@@ -255,7 +248,7 @@ export default function UserDetailPage() {
 
   const isOwnProfile = profile?.id === userId;
 
-  // ── Fetch user & available roles ─────────────────────────────────────────
+  // -- Fetch user & available roles -----------------------------------------
   useEffect(() => {
     if (authLoading || !isAuthenticated || !userId) return;
     (async () => {
@@ -283,7 +276,7 @@ export default function UserDetailPage() {
     })();
   }, [userId, authLoading, isAuthenticated, canManage]);
 
-  // ── Delete handler ───────────────────────────────────────────────────────
+  // -- Delete handler -------------------------------------------------------
   async function handleDelete() {
     if (!user) return;
     setIsDeleting(true); setDeleteError(null);
@@ -306,7 +299,7 @@ export default function UserDetailPage() {
     }
   }
 
-  // ── Assign role handler ──────────────────────────────────────────────────
+  // -- Assign role handler --------------------------------------------------
   async function handleAssignRole(roleIds: string[]) {
     setIsAssigningRole(true); setAssignRoleError(null);
     try {
@@ -338,7 +331,7 @@ export default function UserDetailPage() {
     } finally { setIsAssigningRole(false); }
   }
 
-  // ── Revoke role handler ──────────────────────────────────────────────────
+  // -- Revoke role handler --------------------------------------------------
   async function handleRevokeRole(roleName: string) {
     const role = allRoles.find((r) => r.name === roleName);
     if (!role) return;
@@ -361,7 +354,7 @@ export default function UserDetailPage() {
     } catch { /* silent */ } finally { setRevokingRole(null); }
   }
 
-  // ── Auth gate ────────────────────────────────────────────────────────────
+  // -- Auth gate ------------------------------------------------------------
   useEffect(() => { if (!authLoading && !isAuthenticated) router.push("/login"); }, [authLoading, isAuthenticated, router]);
 
   if (authLoading) return <main className="flex min-h-dvh items-center justify-center"><span className="spinner-ring" /></main>;

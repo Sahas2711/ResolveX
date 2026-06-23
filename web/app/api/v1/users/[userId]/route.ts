@@ -22,7 +22,7 @@ import {
   toUserResponse,
 } from "@/lib/validators/user";
 
-// ── Shared: Fetch user by ID ───────────────────────────────────────────────
+// -- Shared: Fetch user by ID -----------------------------------------------
 
 async function findUserOrNull(userId: string) {
   return prisma.user.findFirst({
@@ -47,7 +47,7 @@ async function findUserOrNull(userId: string) {
   });
 }
 
-// ── GET: Get User by ID ────────────────────────────────────────────────────
+// -- GET: Get User by ID ----------------------------------------------------
 
 export async function GET(
   request: Request,
@@ -76,7 +76,7 @@ export async function GET(
   }
 }
 
-// ── PUT: Update User ───────────────────────────────────────────────────────
+// -- PUT: Update User -------------------------------------------------------
 
 export async function PUT(
   request: Request,
@@ -97,7 +97,7 @@ export async function PUT(
       return notFoundResponse("User not found");
     }
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = updateUserSchema.safeParse(body);
 
@@ -112,7 +112,7 @@ export async function PUT(
 
     const { name, email, isActive } = parsed.data;
 
-    // ── Check duplicate email (if email is being changed) ────────────
+    // -- Check duplicate email (if email is being changed) ------------
     if (email && email !== existing.email) {
       const duplicate = await prisma.user.findFirst({
         where: { email, id: { not: userId }, deletedAt: null },
@@ -123,7 +123,7 @@ export async function PUT(
       }
     }
 
-    // ── Build update payload ─────────────────────────────────────────
+    // -- Build update payload -----------------------------------------
     const updateData: Record<string, unknown> = {};
 
     if (name !== undefined) {
@@ -139,7 +139,7 @@ export async function PUT(
       updateData.status = isActive ? "ACTIVE" : "INACTIVE";
     }
 
-    // ── Execute update ───────────────────────────────────────────────
+    // -- Execute update -----------------------------------------------
     const updated = await prisma.user.update({
       where: { id: userId },
       data: updateData as any,
@@ -174,7 +174,7 @@ export async function PUT(
   }
 }
 
-// ── DELETE: Soft-Delete User ───────────────────────────────────────────────
+// -- DELETE: Soft-Delete User -----------------------------------------------
 
 export async function DELETE(
   request: Request,
@@ -200,7 +200,7 @@ export async function DELETE(
       return conflictResponse("You cannot delete your own account");
     }
 
-    // ── Soft-delete ──────────────────────────────────────────────────
+    // -- Soft-delete --------------------------------------------------
     await prisma.user.update({
       where: { id: userId },
       data: {

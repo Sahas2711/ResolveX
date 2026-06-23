@@ -5,17 +5,21 @@
 
 import { v2 as cloudinary } from "cloudinary";
 
-// ── Configuration ──────────────────────────────────────────────────────────
+// -- Configuration ----------------------------------------------------------
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+console.log("Cloudinary configured with cloud name:", process.env.CLOUDINARY_CLOUD_NAME);
+console.log("Cloudinary API key:", process.env.CLOUDINARY_API_KEY ? "set" : "not set");
+console.log("Cloudinary API secret:", process.env.CLOUDINARY_API_SECRET );
+console.log("Cloudinary path prefix:", process.env.CLOUDINARY_PATH || "/HOME/RESOLVE-X");
 
 const CLOUDINARY_PATH = process.env.CLOUDINARY_PATH || "/HOME/RESOLVE-X";
 
-// ── Allowed file types and max size ────────────────────────────────────────
+// -- Allowed file types and max size ----------------------------------------
 
 export const ALLOWED_MIME_TYPES = [
   "image/jpeg",
@@ -29,7 +33,7 @@ export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number];
 
-// ── Upload a file buffer to Cloudinary ─────────────────────────────────────
+// -- Upload a file buffer to Cloudinary -------------------------------------
 
 export interface CloudinaryUploadResult {
   url: string;
@@ -54,7 +58,11 @@ export async function uploadToCloudinary(
   complaintId: string,
 ): Promise<CloudinaryUploadResult> {
   const folder = `${CLOUDINARY_PATH}/${complaintId}`.replace(/\/+/g, "/").replace(/^\/+/, "");
-
+  //console.log("Uploading to Cloudinary folder:", folder, "filename:", filename);
+  console.log("Cloudinary configured with cloud name:", process.env.CLOUDINARY_CLOUD_NAME);
+console.log("Cloudinary API key:", process.env.CLOUDINARY_API_KEY ? "set" : "not set");
+console.log("Cloudinary API secret:", process.env.CLOUDINARY_API_SECRET );
+console.log("Cloudinary path prefix:", process.env.CLOUDINARY_PATH || "/HOME/RESOLVE-X");
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -74,7 +82,7 @@ export async function uploadToCloudinary(
           reject(new Error("Cloudinary upload returned empty result"));
           return;
         }
-
+        //console.log("Cloudinary upload successful:", result.secure_url);
         resolve({
           url: result.secure_url,
           publicId: result.public_id,
@@ -89,7 +97,7 @@ export async function uploadToCloudinary(
   });
 }
 
-// ── Delete an asset from Cloudinary ────────────────────────────────────────
+// -- Delete an asset from Cloudinary ----------------------------------------
 
 /**
  * Delete a file from Cloudinary by its public ID.
@@ -108,7 +116,7 @@ export async function deleteFromCloudinary(publicId: string): Promise<boolean> {
   }
 }
 
-// ── Validate file ──────────────────────────────────────────────────────────
+// -- Validate file ----------------------------------------------------------
 
 export interface FileValidationResult {
   valid: boolean;

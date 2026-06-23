@@ -46,16 +46,16 @@ export async function GET(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_READ_ALL);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract complaintId ──────────────────────────────────────────
+    // -- Extract complaintId ------------------------------------------
     const { complaintId } = await params;
     ctx.complaintId = complaintId;
 
-    // ── Verify complaint exists ──────────────────────────────────────
+    // -- Verify complaint exists --------------------------------------
     const complaint = await prisma.complaint.findFirst({
       where: { id: complaintId, deletedAt: null },
       select: { id: true },
@@ -65,7 +65,7 @@ export async function GET(
       return notFoundResponse("Complaint not found");
     }
 
-    // ── Fetch attachments ────────────────────────────────────────────
+    // -- Fetch attachments --------------------------------------------
     const attachments = await prisma.attachment.findMany({
       where: { complaintId },
       select: attachmentSelect,
@@ -111,16 +111,16 @@ export async function POST(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_ATTACHMENT);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract complaintId ──────────────────────────────────────────
+    // -- Extract complaintId ------------------------------------------
     const { complaintId } = await params;
     ctx.complaintId = complaintId;
 
-    // ── Verify complaint exists ──────────────────────────────────────
+    // -- Verify complaint exists --------------------------------------
     const complaint = await prisma.complaint.findFirst({
       where: { id: complaintId, deletedAt: null },
       select: {
@@ -138,7 +138,7 @@ export async function POST(
 
     ctx.ticketNumber = complaint.ticketNumber;
 
-    // ── Parse multipart form data ────────────────────────────────────
+    // -- Parse multipart form data ------------------------------------
     const formData = await request.formData();
     const fileField = formData.get("file");
 
@@ -148,24 +148,24 @@ export async function POST(
 
     const file = fileField as File;
 
-    // ── Validate file ────────────────────────────────────────────────
+    // -- Validate file ------------------------------------------------
     const validation = validateFile(file);
     if (!validation.valid) {
       return badRequestResponse(validation.error!);
     }
 
-    // ── Read file buffer ─────────────────────────────────────────────
+    // -- Read file buffer ---------------------------------------------
     const arrayBuffer = await file.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuffer);
-
-    // ── Upload to Cloudinary ─────────────────────────────────────────
+    console.log("File size:", fileBuffer.length, "bytes");
+    // -- Upload to Cloudinary -----------------------------------------
     const uploadResult = await uploadToCloudinary(
       fileBuffer,
       file.name,
       complaintId,
     );
-
-    // ── Create database record and timeline event in transaction ─────
+console.log("Upload result:", uploadResult);
+    // -- Create database record and timeline event in transaction -----
     const attachment = await prisma.$transaction(async (tx: any) => {
       // 1. Create the attachment record
       const created = await tx.attachment.create({
@@ -180,7 +180,7 @@ export async function POST(
         },
         select: attachmentSelect,
       });
-
+      console.log("Attachment record created:", created);
       // 2. Create a timeline event
       await tx.complaintTimeline.create({
         data: {
@@ -198,8 +198,8 @@ export async function POST(
 
       return created;
     });
-
-    // ── Send notifications (fire-and-forget) ─────────────────────────
+    console.log("Transaction completed, attachment:", attachment);
+    // -- Send notifications (fire-and-forget) -------------------------
     const notifications: Array<{
       userId: string;
       title: string;

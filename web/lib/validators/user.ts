@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-// ── User Status ────────────────────────────────────────────────────────────
+// -- User Status ------------------------------------------------------------
 // API spec: "isActive" boolean
 // Prisma:    UserStatus = ACTIVE | INACTIVE | SUSPENDED
 export function mapPrismaStatus(isActive: boolean, status: string): "active" | "inactive" | "suspended" {
@@ -15,7 +15,7 @@ export function mapPrismaStatus(isActive: boolean, status: string): "active" | "
   return "inactive";
 }
 
-// ── Update User Schema ─────────────────────────────────────────────────────
+// -- Update User Schema -----------------------------------------------------
 // API spec: PUT /users/{userId} { name?, email?, isActive? }
 export const updateUserSchema = z.object({
   name: z
@@ -35,7 +35,7 @@ export const updateUserSchema = z.object({
 
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
-// ── List Users Query Schema ────────────────────────────────────────────────
+// -- List Users Query Schema ------------------------------------------------
 export const listUsersSchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
@@ -46,7 +46,7 @@ export const listUsersSchema = z.object({
 
 export type ListUsersInput = z.infer<typeof listUsersSchema>;
 
-// ── Assign Roles Schema ────────────────────────────────────────────────────
+// -- Assign Roles Schema ----------------------------------------------------
 // API spec: POST /users/{userId}/roles { roleIds: string[] }
 export const assignRolesSchema = z.object({
   roleIds: z
@@ -56,7 +56,7 @@ export const assignRolesSchema = z.object({
 
 export type AssignRolesInput = z.infer<typeof assignRolesSchema>;
 
-// ── User Response Shape ────────────────────────────────────────────────────
+// -- User Response Shape ----------------------------------------------------
 export interface UserResponse {
   id: string;
   email: string;
@@ -72,7 +72,7 @@ export interface UserResponse {
   updatedAt: string;
 }
 
-// ── Helper: Map a Prisma User row to the API response shape ────────────────
+// -- Helper: Map a Prisma User row to the API response shape ----------------
 
 export interface UserSelectShape {
   id: string;

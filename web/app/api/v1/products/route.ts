@@ -31,7 +31,7 @@ function generateProductCode(): string {
   return `PRD-${ts}-${rand}`;
 }
 
-// ── POST: Create Product ───────────────────────────────────────────────────
+// -- POST: Create Product ---------------------------------------------------
 
 /**
  * POST /api/v1/products
@@ -49,12 +49,12 @@ export async function POST(request: Request) {
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.PRODUCT_CREATE);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = createProductSchema.safeParse(body);
 
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     const { name, description, status } = parsed.data;
     const prismaStatus = mapApiStatusToPrisma(status);
 
-    // ── Check for duplicate product name ─────────────────────────────
+    // -- Check for duplicate product name -----------------------------
     const existingProduct = await prisma.product.findFirst({
       where: { productName: name, deletedAt: null },
       select: { id: true },
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       return conflictResponse(`A product with the name "${name}" already exists`);
     }
 
-    // ── Create product ───────────────────────────────────────────────
+    // -- Create product -----------------------------------------------
     const product = await prisma.product.create({
       data: {
         productCode: generateProductCode(),
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
   }
 }
 
-// ── GET: List Products ─────────────────────────────────────────────────────
+// -- GET: List Products -----------------------------------------------------
 
 /**
  * GET /api/v1/products
@@ -130,12 +130,12 @@ export async function GET(request: Request) {
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.PRODUCT_READ);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Parse Query Parameters ───────────────────────────────────────
+    // -- Parse Query Parameters ---------------------------------------
     const url = new URL(request.url);
     const queryParams: Record<string, string> = {};
     url.searchParams.forEach((value, key) => {
@@ -154,7 +154,7 @@ export async function GET(request: Request) {
 
     const { page, pageSize, search, status, sort } = parsed.data;
 
-    // ── Build filters ────────────────────────────────────────────────
+    // -- Build filters ------------------------------------------------
     const where: Record<string, unknown> = {
       deletedAt: null,
     };
@@ -170,7 +170,7 @@ export async function GET(request: Request) {
       where.status = mapApiStatusToPrisma(status);
     }
 
-    // ── Parse sort ───────────────────────────────────────────────────
+    // -- Parse sort ---------------------------------------------------
     const orderBy: Record<string, string>[] = [];
     const sortFields = sort.split(",");
     for (const field of sortFields) {
@@ -184,7 +184,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // ── Execute query ────────────────────────────────────────────────
+    // -- Execute query ------------------------------------------------
     const skip = (page - 1) * pageSize;
 
     const [products, totalItems] = await Promise.all([
@@ -227,7 +227,7 @@ export async function GET(request: Request) {
   }
 }
 
-// ── Sort Field Mapping ─────────────────────────────────────────────────────
+// -- Sort Field Mapping -----------------------------------------------------
 
 /**
  * Maps API sort field names to Prisma field names.

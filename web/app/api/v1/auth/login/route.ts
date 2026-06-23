@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   const ctx = { ip };
 
   try {
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = loginSchema.safeParse(body);
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     const { email, password } = parsed.data;
 
-    // ── Find user ────────────────────────────────────────────────────
+    // -- Find user ----------------------------------------------------
     const user = await prisma.user.findUnique({
       where: { email },
       select: {
@@ -82,17 +82,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── Verify password ─────────────────────────────────────────────
+    // -- Verify password ---------------------------------------------
     const passwordValid = await verifyPassword(password, user.passwordHash);
     if (!passwordValid) {
       logger.info("Login failed: invalid password", { ...ctx, email });
       return unauthorizedResponse("Invalid email or password");
     }
 
-    // ── Extract role IDs ────────────────────────────────────────────
+    // -- Extract role IDs --------------------------------------------
     const roleIds = user.userRoles.map((ur: { role: { id: string } }) => ur.role.id);
 
-    // ── Generate tokens ─────────────────────────────────────────────
+    // -- Generate tokens ---------------------------------------------
     const jwtPayload: JwtUserPayload = {
       sub: user.id,
       email: user.email,
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
     const tokenHash = hashToken(refreshTokenValue);
     const tokenExpiresAt = getRefreshTokenExpiry();
 
-    // ── Persist refresh token & update lastLoginAt (atomic) ─────────
+    // -- Persist refresh token & update lastLoginAt (atomic) ---------
     await prisma.$transaction(async (tx: { refreshToken: { updateMany: (args: any) => Promise<any>; create: (args: any) => Promise<any> }; user: { update: (args: any) => Promise<any> } }) => {
       // Revoke any previously active refresh tokens (rotation)
       await tx.refreshToken.updateMany({
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
       roleIds,
     });
 
-    // ── Return response ──────────────────────────────────────────────
+    // -- Return response ----------------------------------------------
     return successResponse({
       accessToken,
       refreshToken: refreshTokenValue,

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getAccessToken } from "@/hooks/useAuth";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface TeamInfo {
   id: string;
@@ -105,7 +105,7 @@ function TeamSelector({
         value={selectedId}
         onChange={(e) => onChange(e.target.value)}
         disabled={isLoading || teams.length === 0}
-        className="w-full appearance-none rounded-xl px-4 py-2.5 pr-10 text-sm text-solvent/70 transition-all duration-300"
+        className="w-full appearance-none rounded-xl px-4 py-2.5 pr-10 text-sm text-solvent transition-all duration-300"
         style={{
           background: "rgba(10,14,20,0.4)",
           border: "1px solid rgba(200,230,201,0.06)",
@@ -169,7 +169,8 @@ export default function TeamMetricsWidget() {
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Fetch teams list ──────────────────────────────────────────────
+  // -- Fetch teams list ----------------------------------------------
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     async function loadTeams() {
       try {
@@ -190,10 +191,12 @@ export default function TeamMetricsWidget() {
         setIsLoadingTeams(false);
       }
     }
+    /* eslint-disable react-hooks/set-state-in-effect */
     loadTeams();
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Fetch metrics when team changes ───────────────────────────────
+  // -- Fetch metrics when team changes -------------------------------
   const fetchMetrics = useCallback(async (teamId: string) => {
     if (!teamId) return;
     setIsLoadingMetrics(true);
@@ -217,7 +220,7 @@ export default function TeamMetricsWidget() {
     if (selectedTeamId) fetchMetrics(selectedTeamId);
   }, [selectedTeamId, fetchMetrics]);
 
-  // ── Loading state ─────────────────────────────────────────────────
+  // -- Loading state -------------------------------------------------
   if (isLoadingTeams) {
     return (
       <div className="space-y-4">

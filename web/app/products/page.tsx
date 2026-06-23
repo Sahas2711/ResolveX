@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getAccessToken, useAuth, checkPermissions } from "@/hooks/useAuth";
 import { Permissions } from "@/lib/permissions";
+import AppNavigation from "@/components/AppNavigation";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface Product {
   id: string;
@@ -23,27 +24,20 @@ interface PaginationMeta {
   totalPages: number;
 }
 
-// ── Particle Field ─────────────────────────────────────────────────────────
+// -- Particle Field ---------------------------------------------------------
 
 function ParticleField() {
-  const [particles, setParticles] = useState<Array<{
-    id: number; x: string; y: string; size: number;
-    delay: number; duration: number; dx: string;
-  }>>([]);
-
-  useEffect(() => {
-    setParticles(
-      Array.from({ length: 12 }, (_, i) => ({
-        id: i,
-        x: `${Math.random() * 100}%`,
-        y: `${Math.random() * 100}%`,
-        size: 1.2 + Math.random() * 2,
-        delay: Math.random() * 8,
-        duration: 5 + Math.random() * 7,
-        dx: `${-30 + Math.random() * 60}px`,
-      })),
-    );
-  }, []);
+  const [particles] = useState(() =>
+    Array.from({ length: 8 }, (_, i) => ({
+      id: i,
+      x: `${Math.random() * 100}%`,
+      y: `${Math.random() * 100}%`,
+      size: 1.2 + Math.random() * 2,
+      delay: Math.random() * 8,
+      duration: 5 + Math.random() * 7,
+      dx: `${-30 + Math.random() * 60}px`,
+    }))
+  );
 
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
@@ -67,7 +61,7 @@ function ParticleField() {
   );
 }
 
-// ── Status Dot ─────────────────────────────────────────────────────────────
+// -- Status Dot -------------------------------------------------------------
 
 function StatusDot({ status }: { status: "active" | "inactive" }) {
   const isActive = status === "active";
@@ -87,7 +81,7 @@ function StatusDot({ status }: { status: "active" | "inactive" }) {
   );
 }
 
-// ── Search Bar ─────────────────────────────────────────────────────────────
+// -- Search Bar -------------------------------------------------------------
 
 function SearchBar({ value, onChange, placeholder }: {
   value: string; onChange: (v: string) => void; placeholder?: string;
@@ -113,7 +107,7 @@ function SearchBar({ value, onChange, placeholder }: {
   );
 }
 
-// ── Empty State ────────────────────────────────────────────────────────────
+// -- Empty State ------------------------------------------------------------
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
@@ -139,7 +133,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
   );
 }
 
-// ── Loading Skeleton ───────────────────────────────────────────────────────
+// -- Loading Skeleton -------------------------------------------------------
 
 function ProductSkeleton() {
   return (
@@ -178,7 +172,7 @@ export default function ProductsPage() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Fetch products ───────────────────────────────────────────────────────
+  // -- Fetch products -------------------------------------------------------
   const fetchProducts = useCallback(async (p: number, q: string, s: string) => {
     setIsFetching(true);
     try {
@@ -201,7 +195,7 @@ export default function ProductsPage() {
     }
   }, []);
 
-  // ── Debounced search ─────────────────────────────────────────────────────
+  // -- Debounced search -----------------------------------------------------
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -209,7 +203,7 @@ export default function ProductsPage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [page, search, statusFilter, authLoading, isAuthenticated, fetchProducts]);
 
-  // ── Auth gate ────────────────────────────────────────────────────────────
+  // -- Auth gate ------------------------------------------------------------
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/login");
   }, [authLoading, isAuthenticated, router]);
@@ -225,22 +219,35 @@ export default function ProductsPage() {
   if (!isAuthenticated) return null;
 
   return (
-    <main className="relative min-h-dvh px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+    <main className="relative min-h-dvh px-4 pt-16 pb-8 sm:px-6 sm:pb-12 lg:px-8">
+      <AppNavigation />
       <ParticleField />
 
-      {/* ── Ambient orb ── */}
+      {/* -- Ambient orb -- */}
       <div className="pointer-events-none fixed top-1/4 left-1/2 h-[60vmin] w-[60vmin] -translate-x-1/2 animate-pulse-glow rounded-full"
         style={{ background: "radial-gradient(circle, rgba(200, 230, 201, 0.03) 0%, transparent 60%)" }}
         aria-hidden="true"
       />
 
-      {/* ── Header ── */}
+      {/* -- Header -- */}
       <div className="mx-auto mb-8 flex max-w-4xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-medium tracking-tight text-solvent sm:text-3xl">Products</h1>
-          <p className="mt-0.5 text-sm text-solvent/35">
-            {meta ? `${meta.totalItems} product${meta.totalItems !== 1 ? "s" : ""} in catalog` : "Product catalog"}
-          </p>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-solvent/40 transition-all duration-300 hover:bg-white/[0.03] hover:text-solvent"
+            aria-label="Back to dashboard"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Back
+          </button>
+          <div>
+            <h1 className="text-2xl font-medium tracking-tight text-solvent sm:text-3xl">Products</h1>
+            <p className="mt-0.5 text-sm text-solvent/35">
+              {meta ? `${meta.totalItems} product${meta.totalItems !== 1 ? "s" : ""} in catalog` : "Product catalog"}
+            </p>
+          </div>
         </div>
         {canCreate && (
           <button
@@ -255,7 +262,7 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* ── Filters ── */}
+      {/* -- Filters -- */}
       <div className="mx-auto mb-6 flex max-w-4xl flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex-1">
           <SearchBar value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search products..." />
@@ -278,7 +285,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* ── Product list ── */}
+      {/* -- Product list -- */}
       <div className="mx-auto max-w-4xl">
         {isFetching ? (
           <ProductSkeleton />
@@ -343,7 +350,7 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* ── Pagination ── */}
+        {/* -- Pagination -- */}
         {meta && meta.totalPages > 1 && (
           <div className="mt-8 flex items-center justify-center gap-3">
             <button

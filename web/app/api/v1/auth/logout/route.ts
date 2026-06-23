@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const ctx = { ip };
 
   try {
-    // ── Extract Bearer token ────────────────────────────────────────
+    // -- Extract Bearer token ----------------------------------------
     const authHeader = request.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       logger.warn("Logout failed: missing Authorization header", ctx);
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
     const token = authHeader.slice(7);
 
-    // ── Verify access token ─────────────────────────────────────────
+    // -- Verify access token -----------------------------------------
     let payload: { sub: string; email: string };
     try {
       payload = await verifyAccessToken(token);
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       return unauthorizedResponse("Invalid or expired token");
     }
 
-    // ── Revoke all active refresh tokens for this user ──────────────
+    // -- Revoke all active refresh tokens for this user --------------
     const result = await prisma.refreshToken.updateMany({
       where: {
         userId: payload.sub,

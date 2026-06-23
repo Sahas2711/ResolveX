@@ -23,7 +23,7 @@ import {
   toProductResponse,
 } from "@/lib/validators/product";
 
-// ── Shared: Fetch product by ID (used by PUT & GET) ────────────────────────
+// -- Shared: Fetch product by ID (used by PUT & GET) ------------------------
 
 async function findProductOrNull(productId: string) {
   return prisma.product.findFirst({
@@ -39,7 +39,7 @@ async function findProductOrNull(productId: string) {
   });
 }
 
-// ── GET: Get Product by ID ─────────────────────────────────────────────────
+// -- GET: Get Product by ID -------------------------------------------------
 
 /**
  * GET /api/v1/products/{productId}
@@ -75,7 +75,7 @@ export async function GET(
   }
 }
 
-// ── PUT: Update Product ────────────────────────────────────────────────────
+// -- PUT: Update Product ----------------------------------------------------
 
 /**
  * PUT /api/v1/products/{productId}
@@ -101,22 +101,22 @@ export async function PUT(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.PRODUCT_UPDATE);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract productId ────────────────────────────────────────────
+    // -- Extract productId --------------------------------------------
     const { productId } = await params;
     ctx.productId = productId;
 
-    // ── Verify product exists ────────────────────────────────────────
+    // -- Verify product exists ----------------------------------------
     const existing = await findProductOrNull(productId);
     if (!existing) {
       return notFoundResponse("Product not found");
     }
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = updateProductSchema.safeParse(body);
 
@@ -131,7 +131,7 @@ export async function PUT(
 
     const { name, description, status } = parsed.data;
 
-    // ── Check for duplicate name (if name is being changed) ──────────
+    // -- Check for duplicate name (if name is being changed) ----------
     if (name && name !== existing.productName) {
       const duplicate = await prisma.product.findFirst({
         where: {
@@ -149,7 +149,7 @@ export async function PUT(
       }
     }
 
-    // ── Build update payload (only provided fields) ──────────────────
+    // -- Build update payload (only provided fields) ------------------
     const updateData: Record<string, unknown> = {};
 
     if (name !== undefined) {
@@ -162,7 +162,7 @@ export async function PUT(
       updateData.status = mapApiStatusToPrisma(status);
     }
 
-    // ── Execute update ───────────────────────────────────────────────
+    // -- Execute update -----------------------------------------------
     const updated = await prisma.product.update({
       where: { id: productId },
       data: updateData as any,
@@ -189,7 +189,7 @@ export async function PUT(
   }
 }
 
-// ── DELETE: Soft-Delete Product ────────────────────────────────────────────
+// -- DELETE: Soft-Delete Product --------------------------------------------
 
 /**
  * DELETE /api/v1/products/{productId}
@@ -212,22 +212,22 @@ export async function DELETE(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.PRODUCT_DELETE);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract productId ────────────────────────────────────────────
+    // -- Extract productId --------------------------------------------
     const { productId } = await params;
     ctx.productId = productId;
 
-    // ── Verify product exists ────────────────────────────────────────
+    // -- Verify product exists ----------------------------------------
     const existing = await findProductOrNull(productId);
     if (!existing) {
       return notFoundResponse("Product not found");
     }
 
-    // ── Check for active complaints ──────────────────────────────────
+    // -- Check for active complaints ----------------------------------
     const activeComplaintCount = await prisma.complaint.count({
       where: {
         productId,
@@ -244,7 +244,7 @@ export async function DELETE(
       );
     }
 
-    // ── Soft-delete (set deletedAt) ──────────────────────────────────
+    // -- Soft-delete (set deletedAt) ----------------------------------
     await prisma.product.update({
       where: { id: productId },
       data: { deletedAt: new Date() },

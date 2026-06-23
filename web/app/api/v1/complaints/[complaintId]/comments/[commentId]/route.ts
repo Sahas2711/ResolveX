@@ -48,17 +48,17 @@ export async function PATCH(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_COMMENT);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract params ───────────────────────────────────────────────
+    // -- Extract params -----------------------------------------------
     const { complaintId, commentId } = await params;
     ctx.complaintId = complaintId;
     ctx.commentId = commentId;
 
-    // ── Verify comment exists and belongs to the user ─────────────────
+    // -- Verify comment exists and belongs to the user -----------------
     const existing = await prisma.comment.findFirst({
       where: { id: commentId, complaintId },
       select: { id: true, userId: true },
@@ -72,7 +72,7 @@ export async function PATCH(
       return forbiddenResponse("You can only edit your own comments");
     }
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = editCommentSchema.safeParse(body);
 
@@ -87,7 +87,7 @@ export async function PATCH(
 
     const { content } = parsed.data;
 
-    // ── Update the comment ───────────────────────────────────────────
+    // -- Update the comment -------------------------------------------
     const updated = await prisma.comment.update({
       where: { id: commentId },
       data: {
@@ -133,17 +133,17 @@ export async function DELETE(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_COMMENT);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract params ───────────────────────────────────────────────
+    // -- Extract params -----------------------------------------------
     const { complaintId, commentId } = await params;
     ctx.complaintId = complaintId;
     ctx.commentId = commentId;
 
-    // ── Verify comment exists ─────────────────────────────────────────
+    // -- Verify comment exists -----------------------------------------
     const existing = await prisma.comment.findFirst({
       where: { id: commentId, complaintId },
       select: {
@@ -159,7 +159,7 @@ export async function DELETE(
       return notFoundResponse("Comment not found");
     }
 
-    // ── Ownership or team-lead check ─────────────────────────────────
+    // -- Ownership or team-lead check ---------------------------------
     const isOwner = existing.userId === auth.user.userId;
 
     if (!isOwner) {

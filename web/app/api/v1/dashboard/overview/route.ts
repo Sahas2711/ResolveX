@@ -17,7 +17,7 @@ import { Permissions } from "@/lib/permissions";
 import { requirePermissions } from "@/lib/rbac";
 import { successResponse, internalErrorResponse } from "@/lib/response";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface DashboardOverviewResponse {
   totalComplaints: number;
@@ -53,12 +53,12 @@ export async function GET(request: Request) {
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.DASHBOARD_EXECUTIVE);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Parse optional date range ────────────────────────────────────
+    // -- Parse optional date range ------------------------------------
     const url = new URL(request.url);
     const dateFrom = url.searchParams.get("dateFrom");
     const dateTo = url.searchParams.get("dateTo");
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     ctx.dateFrom = dateFrom ?? "none";
     ctx.dateTo = dateTo ?? "none";
 
-    // ── Run all queries in parallel ──────────────────────────────────
+    // -- Run all queries in parallel ----------------------------------
     const [
       totalCount,
       statusCounts,
@@ -110,7 +110,7 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    // ── Build status map ─────────────────────────────────────────────
+    // -- Build status map ---------------------------------------------
     const statusMap = new Map<string, number>();
     for (const s of statusCounts) {
       statusMap.set(s.currentStatus, s._count.id);
@@ -126,7 +126,7 @@ export async function GET(request: Request) {
     const resolvedCount = statusMap.get("RESOLVED") ?? 0;
     const closedComplaints = statusMap.get("CLOSED") ?? 0;
 
-    // ── Average resolution time (hours) ──────────────────────────────
+    // -- Average resolution time (hours) ------------------------------
     const totalResolutionMs = resolvedComplaintData.reduce(
       (sum, c) => {
         if (c.resolvedAt) return sum + (c.resolvedAt.getTime() - c.createdAt.getTime());
@@ -139,7 +139,7 @@ export async function GET(request: Request) {
         ? totalResolutionMs / resolvedComplaintData.length / (1000 * 60 * 60)
         : null;
 
-    // ── Resolution rate (% of resolved + closed vs total) ────────────
+    // -- Resolution rate (% of resolved + closed vs total) ------------
     const resolutionRate =
       totalCount > 0
         ? Math.round(((resolvedCount + closedComplaints) / totalCount) * 100)

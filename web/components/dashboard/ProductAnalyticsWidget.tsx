@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getAccessToken } from "@/hooks/useAuth";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface ProductInfo {
   id: string;
@@ -45,7 +45,7 @@ function ProductSelector({
         value={selectedId}
         onChange={(e) => onChange(e.target.value)}
         disabled={isLoading || products.length === 0}
-        className="w-full appearance-none rounded-xl px-4 py-2.5 pr-10 text-sm text-solvent/70 transition-all duration-300"
+        className="w-full appearance-none rounded-xl px-4 py-2.5 pr-10 text-sm text-solvent transition-all duration-300"
         style={{
           background: "rgba(10,14,20,0.4)",
           border: "1px solid rgba(200,230,201,0.06)",
@@ -268,7 +268,7 @@ export default function ProductAnalyticsWidget() {
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Fetch products list ───────────────────────────────────────────
+  // -- Fetch products list -------------------------------------------
   useEffect(() => {
     async function loadProducts() {
       try {
@@ -289,10 +289,12 @@ export default function ProductAnalyticsWidget() {
         setIsLoadingProducts(false);
       }
     }
+    /* eslint-disable react-hooks/set-state-in-effect */
     loadProducts();
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Fetch analytics when product changes ──────────────────────────
+  // -- Fetch analytics when product changes --------------------------
   const fetchAnalytics = useCallback(async (productId: string) => {
     if (!productId) return;
     setIsLoadingAnalytics(true);
@@ -316,7 +318,7 @@ export default function ProductAnalyticsWidget() {
     if (selectedProductId) fetchAnalytics(selectedProductId);
   }, [selectedProductId, fetchAnalytics]);
 
-  // ── Loading state ─────────────────────────────────────────────────
+  // -- Loading state -------------------------------------------------
   if (isLoadingProducts) {
     return (
       <div className="space-y-4">

@@ -46,16 +46,16 @@ export async function GET(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_READ_ALL);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract complaintId ──────────────────────────────────────────
+    // -- Extract complaintId ------------------------------------------
     const { complaintId } = await params;
     ctx.complaintId = complaintId;
 
-    // ── Verify complaint exists ──────────────────────────────────────
+    // -- Verify complaint exists --------------------------------------
     const complaint = await prisma.complaint.findFirst({
       where: { id: complaintId, deletedAt: null },
       select: { id: true },
@@ -65,13 +65,13 @@ export async function GET(
       return notFoundResponse("Complaint not found");
     }
 
-    // ── Parse pagination params ──────────────────────────────────────
+    // -- Parse pagination params --------------------------------------
     const url = new URL(request.url);
     const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get("pageSize") ?? "20", 10) || 20));
     const skip = (page - 1) * pageSize;
 
-    // ── Fetch comments ───────────────────────────────────────────────
+    // -- Fetch comments -----------------------------------------------
     const [comments, totalItems] = await Promise.all([
       prisma.comment.findMany({
         where: { complaintId },
@@ -129,16 +129,16 @@ export async function POST(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_COMMENT);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract complaintId ──────────────────────────────────────────
+    // -- Extract complaintId ------------------------------------------
     const { complaintId } = await params;
     ctx.complaintId = complaintId;
 
-    // ── Verify complaint exists and fetch notification targets ────────
+    // -- Verify complaint exists and fetch notification targets --------
     const complaint = await prisma.complaint.findFirst({
       where: { id: complaintId, deletedAt: null },
       select: {
@@ -156,7 +156,7 @@ export async function POST(
 
     ctx.ticketNumber = complaint.ticketNumber;
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = createCommentSchema.safeParse(body);
 
@@ -171,7 +171,7 @@ export async function POST(
 
     const { content, internal } = parsed.data;
 
-    // ── Create comment in transaction ─────────────────────────────────
+    // -- Create comment in transaction ---------------------------------
     const comment = await prisma.$transaction(async (tx: any) => {
       // 1. Create the comment
       const created = await tx.comment.create({
@@ -201,7 +201,7 @@ export async function POST(
       return created;
     });
 
-    // ── Send COMMENT notifications (fire-and-forget) ──────────────────
+    // -- Send COMMENT notifications (fire-and-forget) ------------------
     const notifications: Array<{
       userId: string;
       title: string;

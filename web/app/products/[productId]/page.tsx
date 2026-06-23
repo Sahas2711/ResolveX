@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { getAccessToken, useAuth, checkPermissions } from "@/hooks/useAuth";
 import { Permissions } from "@/lib/permissions";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface Product {
   id: string;
@@ -29,7 +29,7 @@ interface TeamSearchResult {
   description: string | null;
 }
 
-// ── Particle Field ─────────────────────────────────────────────────────────
+// -- Particle Field ---------------------------------------------------------
 
 function ParticleField() {
   const [particles, setParticles] = useState<Array<{
@@ -65,7 +65,7 @@ function ParticleField() {
   );
 }
 
-// ── Delete Product Modal ───────────────────────────────────────────────────
+// -- Delete Product Modal ---------------------------------------------------
 
 function DeleteModal({
   productName,
@@ -141,7 +141,7 @@ function DeleteModal({
   );
 }
 
-// ── Unmap Team Confirmation Modal ──────────────────────────────────────────
+// -- Unmap Team Confirmation Modal ------------------------------------------
 
 function UnmapTeamModal({
   teamName,
@@ -216,7 +216,7 @@ function UnmapTeamModal({
   );
 }
 
-// ── Map Team Modal ─────────────────────────────────────────────────────────
+// -- Map Team Modal ---------------------------------------------------------
 
 function MapTeamModal({
   isOpen,
@@ -349,7 +349,7 @@ function MapTeamModal({
           </div>
         )}
 
-        {/* ── Team Search ── */}
+        {/* -- Team Search -- */}
         <div ref={searchRef} className="relative mb-4">
           {selectedTeam ? (
             <div className="flex items-center gap-2 rounded-2xl px-4 py-3"
@@ -390,7 +390,7 @@ function MapTeamModal({
             </div>
           )}
 
-          {/* ── Search dropdown ── */}
+          {/* -- Search dropdown -- */}
           {showDropdown && searchResults.length > 0 && (
             <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-44 overflow-y-auto rounded-2xl p-1 animate-fade-in"
               style={{
@@ -434,7 +434,7 @@ function MapTeamModal({
           )}
         </div>
 
-        {/* ── isPrimary toggle ── */}
+        {/* -- isPrimary toggle -- */}
         <div className="mb-4 flex items-center justify-between rounded-2xl p-3"
           style={{ background: "rgba(10, 14, 20, 0.3)", border: "1px solid rgba(200, 230, 201, 0.04)" }}
         >
@@ -458,7 +458,7 @@ function MapTeamModal({
           </button>
         </div>
 
-        {/* ── Load Weight slider ── */}
+        {/* -- Load Weight slider -- */}
         <div className="mb-6 rounded-2xl p-3"
           style={{ background: "rgba(10, 14, 20, 0.3)", border: "1px solid rgba(200, 230, 201, 0.04)" }}
         >
@@ -488,7 +488,7 @@ function MapTeamModal({
           </div>
         </div>
 
-        {/* ── Buttons ── */}
+        {/* -- Buttons -- */}
         <div className="flex gap-3">
           <button onClick={onClose} disabled={isSubmitting}
             className="flex-1 rounded-full py-2.5 text-sm text-solvent/50 transition-all hover:text-solvent"
@@ -546,7 +546,7 @@ export default function ProductDetailPage() {
   const canUpdate = profile ? checkPermissions(auth, [Permissions.PRODUCT_UPDATE]).allowed : false;
   const canDelete = profile ? checkPermissions(auth, [Permissions.PRODUCT_DELETE]).allowed : false;
 
-  // ── Fetch product & team mappings ────────────────────────────────────────
+  // -- Fetch product & team mappings ----------------------------------------
   useEffect(() => {
     if (authLoading || !isAuthenticated || !productId) return;
     (async () => {
@@ -575,7 +575,7 @@ export default function ProductDetailPage() {
     })();
   }, [productId, authLoading, isAuthenticated]);
 
-  // ── Delete handler ───────────────────────────────────────────────────────
+  // -- Delete handler -------------------------------------------------------
   async function handleDelete() {
     if (!product) return;
     setIsDeleting(true);
@@ -600,7 +600,7 @@ export default function ProductDetailPage() {
     }
   }
 
-  // ── Map team handler ─────────────────────────────────────────────────────
+  // -- Map team handler -----------------------------------------------------
   async function handleMapTeam(teamId: string, isPrimary: boolean, loadWeight: number) {
     setIsMappingTeam(true);
     setMapTeamError(null);
@@ -643,7 +643,7 @@ export default function ProductDetailPage() {
     }
   }
 
-  // ── Unmap team handler ───────────────────────────────────────────────────
+  // -- Unmap team handler ---------------------------------------------------
   async function handleUnmapTeam() {
     if (!teamToUnmap) return;
     setIsUnmapping(true);
@@ -672,7 +672,7 @@ export default function ProductDetailPage() {
     }
   }
 
-  // ── Auth gate ────────────────────────────────────────────────────────────
+  // -- Auth gate ------------------------------------------------------------
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/login");
   }, [authLoading, isAuthenticated, router]);
@@ -692,7 +692,7 @@ export default function ProductDetailPage() {
       />
 
       <div className="mx-auto max-w-2xl">
-        {/* ── Back link ── */}
+        {/* -- Back link -- */}
         <button onClick={() => router.push("/products")}
           className="mb-6 flex items-center gap-2 text-sm text-solvent/30 transition-colors hover:text-phosphor"
         >
@@ -702,7 +702,7 @@ export default function ProductDetailPage() {
           Back to products
         </button>
 
-        {/* ── Loading ── */}
+        {/* -- Loading -- */}
         {isFetching ? (
           <div className="animate-pulse space-y-4 rounded-[2rem] p-8" style={{ background: "linear-gradient(135deg, rgba(19, 26, 36, 0.6), rgba(26, 31, 40, 0.5))", border: "1px solid rgba(200, 230, 201, 0.04)" }}>
             <div className="h-5 w-2/5 rounded bg-bathyal/20" />
@@ -724,7 +724,7 @@ export default function ProductDetailPage() {
           </div>
         ) : product ? (
           <>
-            {/* ── Product detail halo ── */}
+            {/* -- Product detail halo -- */}
             <div className="animate-fade-in rounded-[2.5rem] p-6 sm:p-10"
               style={{
                 background: "linear-gradient(135deg, rgba(19, 26, 36, 0.75), rgba(26, 31, 40, 0.65))",
@@ -737,7 +737,7 @@ export default function ProductDetailPage() {
                 aria-hidden="true"
               />
 
-              {/* ── Header ── */}
+              {/* -- Header -- */}
               <div className="mb-8 flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-3">
@@ -789,7 +789,7 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* ── Description ── */}
+              {/* -- Description -- */}
               <div className="mb-8">
                 <h2 className="mb-2 text-xs font-medium tracking-wider text-solvent/25 uppercase">Description</h2>
                 {product.description ? (
@@ -801,14 +801,14 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
-              {/* ── Product ID ── */}
+              {/* -- Product ID -- */}
               <div className="rounded-2xl p-4" style={{ background: "rgba(10, 14, 20, 0.4)", border: "1px solid rgba(200, 230, 201, 0.03)" }}>
                 <span className="text-[11px] font-medium tracking-wider text-solvent/20 uppercase">Product ID</span>
                 <p className="mt-1 font-mono text-xs text-solvent/35">{product.id}</p>
               </div>
             </div>
 
-            {/* ── Team Mappings Section ── */}
+            {/* -- Team Mappings Section -- */}
             <div className="mt-8 animate-fade-in rounded-[2.5rem] p-6 sm:p-8"
               style={{
                 background: "linear-gradient(135deg, rgba(19, 26, 36, 0.6), rgba(26, 31, 40, 0.5))",
@@ -910,7 +910,7 @@ export default function ProductDetailPage() {
         ) : null}
       </div>
 
-      {/* ── Delete Product Modal ── */}
+      {/* -- Delete Product Modal -- */}
       {showDeleteModal && product && (
         <DeleteModal productName={product.name} isDeleting={isDeleting} error={deleteError}
           onConfirm={handleDelete}
@@ -918,7 +918,7 @@ export default function ProductDetailPage() {
         />
       )}
 
-      {/* ── Unmap Team Modal ── */}
+      {/* -- Unmap Team Modal -- */}
       {teamToUnmap && (
         <UnmapTeamModal teamName={teamToUnmap.teamName} isUnmapping={isUnmapping} error={unmapError}
           onConfirm={handleUnmapTeam}
@@ -926,7 +926,7 @@ export default function ProductDetailPage() {
         />
       )}
 
-      {/* ── Map Team Modal ── */}
+      {/* -- Map Team Modal -- */}
       <MapTeamModal
         isOpen={showMapTeam}
         isSubmitting={isMappingTeam}

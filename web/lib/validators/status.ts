@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 
-// ── General Status Transition ──────────────────────────────────────────────
+// -- General Status Transition ----------------------------------------------
 // POST /complaints/{complaintId}/status
 // Body: { transitionId: string, remarks?: string }
 
@@ -24,7 +24,7 @@ export const statusTransitionSchema = z.object({
 
 export type StatusTransitionInput = z.infer<typeof statusTransitionSchema>;
 
-// ── Resolve Complaint ─────────────────────────────────────────────────────
+// -- Resolve Complaint -----------------------------------------------------
 // POST /complaints/{complaintId}/resolve
 // Body: { resolutionSummary: string }
 
@@ -38,7 +38,7 @@ export const resolveComplaintSchema = z.object({
 
 export type ResolveComplaintInput = z.infer<typeof resolveComplaintSchema>;
 
-// ── Close Complaint ───────────────────────────────────────────────────────
+// -- Close Complaint -------------------------------------------------------
 // POST /complaints/{complaintId}/close
 // Body: { closureNotes?: string }
 
@@ -52,7 +52,7 @@ export const closeComplaintSchema = z.object({
 
 export type CloseComplaintInput = z.infer<typeof closeComplaintSchema>;
 
-// ── Reopen Complaint ──────────────────────────────────────────────────────
+// -- Reopen Complaint ------------------------------------------------------
 // POST /complaints/{complaintId}/reopen
 // Body: { reason: string }
 
@@ -66,7 +66,7 @@ export const reopenComplaintSchema = z.object({
 
 export type ReopenComplaintInput = z.infer<typeof reopenComplaintSchema>;
 
-// ── Escalate Complaint ────────────────────────────────────────────────────
+// -- Escalate Complaint ----------------------------------------------------
 // POST /complaints/{complaintId}/escalate
 // Body: { reason: string, escalationLevel?: string }
 
