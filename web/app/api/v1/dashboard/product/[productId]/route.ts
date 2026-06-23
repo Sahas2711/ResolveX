@@ -177,11 +177,12 @@ export async function GET(
 
     const categoryNameMap = new Map(categories.map((c) => [c.id, c.name]));
 
-    const categoryBreakdown: Record<string, number> = {};
-    for (const c of categoryData) {
-      const name = categoryNameMap.get(c.categoryId) ?? "Unknown";
-      categoryBreakdown[name] = c._count.id;
-    }
+    const categoryBreakdown = Object.fromEntries(
+      categoryData.map((c) => [
+        categoryNameMap.get(c.categoryId) ?? "Unknown",
+        c._count.id,
+      ]),
+    ) as Record<string, number>;
 
     // -- Build frequent issues ----------------------------------------
     const frequentIssues: FrequentIssue[] = titleGroups.map((t) => ({

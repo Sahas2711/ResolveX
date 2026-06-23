@@ -112,14 +112,16 @@ export async function GET(
           select: { id: true, firstName: true, lastName: true },
         })
       : [];
-    const actorMap = new Map(actors.map((a) => [a.id, `${a.firstName} ${a.lastName}`]));
-
+    //const actorMap = new Map(actors.map((a) => [a.id, `${a.firstName} ${a.lastName}`]));
+    const actorMap = new Map<string, string>(
+  actors.map((a) => [a.id, `${a.firstName} ${a.lastName}`])
+);
     const totalPages = Math.ceil(totalItems / pageSize);
 
     const data = events.map((event) =>
       toTimelineEventResponse(
         event,
-        actorMap.get(event.actorId) ?? "Unknown User",
+        String(actorMap.get(event.actorId) ?? "Unknown User"),
       ),
     );
 

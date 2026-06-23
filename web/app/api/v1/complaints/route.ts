@@ -11,14 +11,12 @@ import { requirePermissions } from "@/lib/rbac";
 import {
   successResponse,
   createdResponse,
-  successResponse,
   notFoundResponse,
   validationErrorResponse,
   internalErrorResponse,
 } from "@/lib/response";
 import {
   createComplaintSchema,
-  listComplaintsSchema,
   mapApiPriorityToPrisma,
   mapApiSeverityToPrisma,
   complaintSelect,
@@ -162,82 +160,6 @@ const STATUS_MAP: Record<string, string> = {
  *   200 – Paginated list of complaints
  *   422 – Validation error
  */
-export async function GET(request: Request) {
-  const ctx: Record<string, unknown> = {};
-
-  try {
-    // -- Authorization ------------------------------------------------
-    const auth = await requirePermissions(request, Permissions.COMPLAINT_READ_ALL);
-    if (!auth.allowed) return auth.response;
-    ctx.userId = auth.user.userId;
-
-    // -- Parse Query Parameters ---------------------------------------
-    const url = new URL(request.url);
-    const queryParams: Record<string, string> = {};
-    url.searchParams.forEach((value, key) => {
-      queryParams[key] = value;
-    });
-
-    const parsed = listComplaintsSchema.safeParse(queryParams);
-    if (!parsed.success) {
-      const details = parsed.error.issues.map((issue) => ({
-        field: issue.path.join("."),
-        message: issue.message,
-        constraint: issue.code,
-      }));
-      return validationErrorResponse(details);
-    }
-
-    const { page, pageSize, search, status } = parsed.data;
-
-    // -- Build filters ------------------------------------------------
-    const where: Record<string, unknown> = { deletedAt: null };
-
-    if (search) {
-      where.OR = [
-        { ticketNumber: { contains: search, mode: "insensitive" } },
-        { title: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    if (status && status !== "all") {
-      where.currentStatus = STATUS_MAP[status] ?? "OPEN";
-    }
-
-    // -- Execute query ------------------------------------------------
-    const skip = (page - 1) * pageSize;
-
-    const [complaints, totalItems] = await Promise.all([
-      prisma.complaint.findMany({
-        where: where as any,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: pageSize,
-        select: complaintSelect,
-      }),
-      prisma.complaint.count({ where: where as any }),
-    ]);
-
-    const totalPages = Math.ceil(totalItems / pageSize);
-
-    logger.info("Complaints listed", {
-      ...ctx,
-      page,
-      pageSize,
-      totalItems,
-      filters: { search, status },
-    });
-
-    return successResponse(
-      complaints.map((c) => toComplaintResponse(c as any)),
-      { page, pageSize, totalItems, totalPages },
-    );
-  } catch (error) {
-    logger.error("Complaint listing failed", ctx, error);
-    return internalErrorResponse("Failed to list complaints");
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // GET /api/v1/complaints
 // ═══════════════════════════════════════════════════════════════════════════
