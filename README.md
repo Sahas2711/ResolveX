@@ -1,265 +1,232 @@
-# ResolveX
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/demo/image/upload/v1/RESOLVE-X/logo-dark">
+  <img alt="ResolveX" src="https://res.cloudinary.com/demo/image/upload/v1/RESOLVE-X/logo-light">
+</picture>
 
-<div align="center">
+# ResolveX — Enterprise Complaint Management System
 
-![ResolveX](https://img.shields.io/badge/version-1.0.0-blue?style=flat-square)
-![Next.js](https://img.shields.io/badge/next.js-14-black?style=flat-square&logo=next.js)
-![PostgreSQL](https://img.shields.io/badge/postgresql-15-blue?style=flat-square&logo=postgresql)
-![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+> **A modern, full-featured complaint lifecycle management platform built with Next.js 16, React 19, Prisma 7, and PostgreSQL.**
 
-**Intelligent Complaint & Ticket Management Platform**
-
-</div>
+ResolveX streamlines the entire complaint journey — from submission through triage, assignment, investigation, resolution, and closure — with enterprise-grade RBAC, automated SLA tracking, real-time timelines, team management, and actionable analytics dashboards.
 
 ---
 
-## Table of Contents
+## ✨ Features
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Architecture](#architecture)
-- [Entity Relationship Diagram](#entity-relationship-diagram)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Environment Variables](#environment-variables)
-  - [Database Setup](#database-setup)
-  - [Running the Application](#running-the-application)
-- [Project Structure](#project-structure)
-- [API Overview](#api-overview)
-- [Core Concepts](#core-concepts)
-  - [Auto‑Assignment Engine](#auto‑assignment-engine)
-  - [Complaint Lifecycle](#complaint-lifecycle)
-  - [Role‑Based Access Control (RBAC)](#role‑based-access-control-rbac)
-  - [SLA Tracking & Breach Detection](#sla-tracking--breach-detection)
-- [Dashboards & Analytics](#dashboards--analytics)
-- [Webhooks & Events](#webhooks--events)
-- [Security](#security)
-- [Deployment](#deployment)
-- [Contributing](#contributing)
-- [License](#license)
+### 🎫 Complaint Lifecycle
+- **Full lifecycle management** — Open → Assigned → In Progress → Resolved → Closed, with support for waiting, reopening, and escalation
+- **Automatic ticket numbering** with configurable format
+- **Priority & severity classification** (Low / Medium / High / Critical)
+- **Category-based organization** with product-specific categories
+- **SLA deadline tracking** for first response and resolution
+- **Status workflow engine** enforcing valid state transitions
 
----
+### 👤 Role-Based Access Control (RBAC)
+- **5 built-in roles**: Customer, Support Agent, Team Lead, Product Manager, Admin
+- **40+ granular permissions** covering complaints, products, teams, users, dashboards, and system settings
+- **Permission-based API gating** — every route checks authorization
+- **Frontend permission hooks** for conditional UI rendering
+- **Role assignment & management** via admin UI
 
-## Overview
+### 💬 Collaboration
+- **Threaded comments** with internal/staff-only visibility
+- **Full comment editing & deletion** by author
+- **Real-time comment polling** for live updates
+- **File attachments** with drag-and-drop upload to Cloudinary
+- **Auto-generated activity timeline** for full audit trail
 
-ResolveX is a full‑stack, enterprise‑grade complaint management system that automates ticket routing, enforces role‑based permissions, and delivers real‑time analytics. Built with **Next.js 14** (App Router) and **PostgreSQL**, it offers a seamless experience for customers, support agents, team leads, product managers, and administrators.
+### 📊 Analytics Dashboards
+- **Executive overview** — system-wide KPIs, trends, and SLA compliance
+- **Product analytics** — complaint volume, category breakdown, frequent issues, resolution trends
+- **Team performance** — workload distribution, resolution rates, SLA adherence
+- **Staff metrics** — individual agent productivity and resolution times
 
-The platform enables:
+### 👥 Team Management
+- **Multi-team support** with product-to-team mappings
+- **Team member roles** (Lead / Member) with distinct permissions
+- **Automatic load-based assignment** engine
+- **Primary team designation** per product
 
-- Customers to submit complaints against multiple products.
-- Automatic assignment of tickets to the most suitable team member using a **least‑load algorithm**.
-- Complete ticket lifecycle management with strict state transition validations.
-- Immutable audit trails and timeline views for every action.
-- Comprehensive dashboards for individuals, teams, products, and executives.
-- Webhook integrations for external systems.
+### 🔐 Security
+- **JWT-based authentication** with access + refresh token rotation
+- **SHA-256 hashed refresh tokens** stored in database
+- **Password hashing** with bcrypt (cost factor 12)
+- **Proxy-level auth header injection** for API route isolation
+- **Security headers** via Vercel config (HSTS, X-Frame-Options, etc.)
 
----
-
-## Key Features
-
-- **Multi‑product support** – Products have categories, SLA rules, and dedicated teams.
-- **Auto‑assignment engine** – Instantly routes new complaints based on product‑team mappings and agent workload.
-- **Ticket lifecycle** – Open → Assigned → In Progress → Waiting for Customer → Resolved → Closed (with Reopen and Escalated states).
-- **RBAC** – Five predefined roles with fine‑grained permission scopes (`complaint:create`, `complaint:reassign`, etc.).
-- **Audit logging** – Every status change, assignment, comment, and attachment is recorded in immutable logs.
-- **Unified timeline** – Chronological view of all events on a complaint.
-- **File attachments** – Secure upload of images, PDFs, and documents (max 10 MB).
-- **Notifications** – In‑app notifications for assignments, escalations, and comments; mark as read in bulk.
-- **Search & filtering** – Global full‑text search combined with multi‑value filters (status, priority, severity, date range, SLA status).
-- **Dashboards** – Staff productivity, team workload, product complaint trends, and executive KPIs.
-- **Webhooks** – Subscribe to `complaint.created`, `complaint.assigned`, `complaint.status_changed`, and `complaint.sla_breached`.
-- **Versioned API** – All endpoints under `/api/v1/` with OpenAPI 3.1 documentation.
+### 📝 Audit & Logging
+- **Enterprise structured logging** with structured JSON in production
+- **Async buffered log writes** (non-blocking, microtask-flushed)
+- **Request correlation IDs** for end-to-end tracing
+- **Duration tracking** for performance monitoring
+- **Request logging middleware** for API routes
 
 ---
 
-## Architecture
+## 🏗 Tech Stack
 
-ResolveX follows a **monolithic Next.js** architecture, using the App Router for both the frontend and the REST API. The database is a single PostgreSQL instance, accessed through Prisma ORM. Authentication is stateless JWT with refresh token rotation.
+| Layer | Technology |
+|-------|-----------|
+| **Framework** | Next.js 16 (App Router) |
+| **UI Library** | React 19 |
+| **Styling** | Tailwind CSS 4 |
+| **Language** | TypeScript 5.9 |
+| **Database** | PostgreSQL 16 |
+| **ORM** | Prisma 7 (with `@prisma/adapter-pg`) |
+| **Auth** | JWT via `jose` + bcrypt |
+| **File Storage** | Cloudinary |
+| **Validation** | Zod 4 |
+| **Deployment** | Vercel |
+| **Package Manager** | npm |
 
-```mermaid
-graph TD
-    A[Client Browser] -->|HTTPS| B[Next.js App Router]
-    B --> C[React Server Components / Pages]
-    B --> D[API Routes /api/v1/*]
-    B --> E[Middleware: Auth, Rate Limiting]
-    D --> F[Prisma ORM]
-    F --> G[(PostgreSQL)]
-    D --> H[Cloud Storage: S3/R2]
-    D --> I[Webhook Dispatcher]
-    I --> J[External Services]
-    E --> K[Redis (optional, rate limiting)]
+---
+
+## 📁 Project Structure
+
+```
+web/
+├── app/                          # Next.js App Router
+│   ├── api/v1/                   # REST API routes
+│   │   ├── auth/                 # Authentication endpoints
+│   │   ├── complaints/           # Complaint CRUD & workflows
+│   │   ├── dashboard/            # Analytics & metrics
+│   │   ├── products/             # Product management
+│   │   ├── teams/                # Team management
+│   │   ├── users/                # User management
+│   │   ├── roles/                # Role management
+│   │   └── health/               # Health check
+│   ├── complaints/               # Complaint pages
+│   ├── dashboard/                # Dashboard pages
+│   ├── products/                 # Product pages
+│   ├── teams/                    # Team pages
+│   ├── users/                    # User pages
+│   ├── login/                    # Login page
+│   ├── register/                 # Registration page
+│   └── layout.tsx                # Root layout
+├── components/                   # Reusable UI components
+│   ├── auth/                     # Auth layout components
+│   ├── dashboard/                # Dashboard widgets
+│   ├── AppNavigation.tsx         # Main navigation bar
+│   └── ThemeProvider.tsx         # Theme context provider
+├── hooks/                        # React hooks
+│   └── useAuth.ts                # Auth state & permission hooks
+├── lib/                          # Core libraries & utilities
+│   ├── auth.ts                   # JWT & password utilities
+│   ├── prisma.ts                 # Prisma client singleton
+│   ├── rbac.ts                   # Role-based access control
+│   ├── permissions.ts            # Permission & role constants
+│   ├── response.ts               # Standardized API response helpers
+│   ├── logger.ts                 # Enterprise structured logger
+│   ├── log-middleware.ts         # Request logging middleware
+│   ├── cloudinary.ts             # Cloudinary upload service
+│   └── validators/               # Zod validation schemas
+├── services/                     # Business logic services
+├── prisma/                       # Database schema & migrations
+│   ├── schema.prisma             # Data model definition
+│   ├── migrations/               # Migration history
+│   ├── seed.ts                   # Database seeder
+│   └── index.ts                  # Prisma client re-export
+├── docs/                         # Documentation
+├── prisma.config.ts              # Prisma v7 configuration
+├── proxy.ts                      # Auth proxy header injection
+└── vercel.json                   # Vercel deployment config
 ```
 
-- **Frontend** – Hybrid rendering: server components for static content, client components for interactive parts (forms, tables, dashboards).
-- **Backend** – API routes co‑located inside `app/api/v1/`; each route handler is a serverless function (or Node.js server).
-- **Caching** – Next.js built‑in data cache for dashboard queries; Redis can be used for rate limiting and session store.
-- **Jobs** – Background SLA breach checks and assignment load recalculation can be implemented via cron jobs (e.g., Vercel Cron Jobs or a separate scheduler).
-
 ---
 
-## Entity Relationship Diagram
-
-```mermaid
-erDiagram
-    USERS ||--o{ USER_ROLES : has
-    USERS ||--o{ REFRESH_TOKENS : owns
-    USERS ||--o{ COMPLAINTS : submits
-    USERS ||--o{ COMPLAINT_COMMENTS : writes
-    USERS ||--o{ COMPLAINT_ATTACHMENTS : uploads
-    USERS ||--o{ NOTIFICATIONS : receives
-    ROLES ||--o{ USER_ROLES : assigned_to
-    ROLES ||--o{ ROLE_PERMISSIONS : has
-    PERMISSIONS ||--o{ ROLE_PERMISSIONS : belongs_to
-    PRODUCTS ||--o{ PRODUCT_CATEGORIES : categorized_by
-    PRODUCTS ||--o{ SLA_RULES : defines
-    PRODUCTS ||--o{ PRODUCT_TEAM_MAPPINGS : mapped_to
-    TEAMS ||--o{ PRODUCT_TEAM_MAPPINGS : mapped_to
-    TEAMS ||--o{ TEAM_MEMBERS : includes
-    COMPLAINTS ||--o{ COMPLAINT_ASSIGNMENTS : has
-    COMPLAINTS ||--o{ COMPLAINT_COMMENTS : has
-    COMPLAINTS ||--o{ COMPLAINT_ATTACHMENTS : has
-    COMPLAINTS ||--o{ COMPLAINT_STATUS_HISTORY : records
-    COMPLAINTS ||--o{ COMPLAINT_TIMELINE : chronicles
-    TEAMS ||--o{ COMPLAINTS : assigned_to
-    USERS ||--o{ COMPLAINTS : assigned_agent
-```
-
----
-
-## Tech Stack
-
-| Category            | Technology                                      |
-|---------------------|-------------------------------------------------|
-| **Framework**       | Next.js 14 (App Router)                         |
-| **Language**        | TypeScript                                      |
-| **Database**        | PostgreSQL 15+                                  |
-| **ORM**             | Prisma                                          |
-| **Authentication**  | JWT (access + refresh), bcrypt                  |
-| **UI**              | Tailwind CSS, shadcn/ui, Recharts               |
-| **File Storage**    | AWS S3 / Cloudflare R2                          |
-| **Rate Limiting**   | Upstash Ratelimit (or in‑memory)                |
-| **Validation**      | Zod                                             |
-| **Deployment**      | Vercel / Docker                                 |
-| **CI/CD**           | GitHub Actions                                  |
-
----
-
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js 20.x or later
-- PostgreSQL 15+ (local or cloud)
-- (Optional) Redis for rate limiting
-- (Optional) AWS S3 or Cloudflare R2 bucket for file uploads
+- **Node.js** >= 20.x
+- **PostgreSQL** >= 16
+- **npm** >= 10.x
+- **Cloudinary account** (for file uploads)
 
-### Installation
+### 1. Clone & Install
 
 ```bash
-git clone https://github.com/your-org/resolvex.git
-cd resolvex
+git clone <repository-url>
+cd web
 npm install
 ```
 
-### Environment Variables
+### 2. Environment Variables
 
-Create a `.env.local` file at the root with the following keys:
+Create a `.env` file in the `web/` directory:
 
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/resolvex"
-JWT_SECRET="your-256-bit-secret"
-JWT_REFRESH_SECRET="your-different-256-bit-secret"
-NEXT_PUBLIC_API_URL="http://localhost:3000/api/v1"
-UPLOAD_BUCKET="resolvex-uploads"          # optional
-UPLOAD_REGION="auto"                      # optional
-UPLOAD_ENDPOINT="https://..."             # optional
-REDIS_URL="redis://localhost:6379"        # optional
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/resolvex?schema=public"
+
+# JWT Secrets (generate with: openssl rand -base64 64)
+JWT_SECRET="your-access-token-secret-min-32-chars"
+JWT_REFRESH_SECRET="your-refresh-token-secret-min-32-chars"
+
+# Cloudinary (optional — for file attachments)
+CLOUDINARY_CLOUD_NAME="your-cloud-name"
+CLOUDINARY_API_KEY="your-api-key"
+CLOUDINARY_API_SECRET="your-api-secret"
+CLOUDINARY_PATH="/RESOLVE-X"
+
+# Optional
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
-### Database Setup
+> **Note:** The `prisma.config.ts` file automatically loads `.env` variables before Prisma CLI commands. No additional dotenv setup needed.
 
-Apply all migrations and seed default roles/permissions:
+### 3. Database Setup
 
 ```bash
-npx prisma migrate dev
-npx prisma db seed
+# Generate Prisma client
+npm run db:generate
+
+# Run migrations
+npm run db:migrate:deploy
+
+# Seed the database (creates admin user, roles, permissions, categories)
+npm run db:seed
 ```
 
-The seed script creates five roles (`CUSTOMER`, `SUPPORT_AGENT`, `TEAM_LEAD`, `PRODUCT_MANAGER`, `ADMIN`) and all necessary permissions.
-
-### Running the Application
+### 4. Start Development
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.  
-The API is accessible at `http://localhost:3000/api/v1`.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Default Admin Credentials
+
+After seeding, you can log in with:
+
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@resolvex.com` | `Admin@123` | ADMIN |
 
 ---
 
-## Project Structure
+## 📜 Available Scripts
 
-```
-src/
-├── app/                          # App Router
-│   ├── (auth)/                   # Login, register pages
-│   ├── (dashboard)/              # Authenticated dashboard pages
-│   ├── api/v1/                   # REST API endpoints
-│   │   ├── auth/                 # register, login, refresh, logout
-│   │   ├── users/                # CRUD & roles
-│   │   ├── roles/                # Role management
-│   │   ├── permissions/          # Permission list
-│   │   ├── products/             # Product, SLA, categories, teams
-│   │   ├── teams/                # Team & members
-│   │   ├── complaints/           # Core lifecycle
-│   │   ├── notifications/        # Read/unread
-│   │   ├── dashboard/            # KPI endpoints
-│   │   ├── analytics/            # Performance summaries
-│   │   ├── system/               # Settings
-│   │   └── webhooks/             # Subscriptions
-│   └── layout.tsx
-├── components/
-│   ├── ui/                       # shadcn/ui primitives
-│   ├── forms/                    # Reusable form fields
-│   ├── complaints/               # Ticket list, detail, timeline
-│   └── dashboard/                # Stat cards, charts
-├── lib/
-│   ├── prisma.ts                 # Prisma client singleton
-│   ├── auth.ts                   # JWT helpers, password hashing
-│   ├── rate-limit.ts             # Rate limiting config
-│   ├── assignment-engine.ts      # Auto‑assignment logic
-│   ├── status-machine.ts         # Allowed state transitions
-│   └── validators.ts             # Zod schemas
-├── hooks/                        # Custom React hooks
-├── styles/                       # Global styles
-└── middleware.ts                  # Auth & rate‑limiting middleware
-```
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start development server with hot reload |
+| `npm run build` | Production build (includes TypeScript check) |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run db:generate` | Generate Prisma client |
+| `npm run db:migrate` | Run dev migrations |
+| `npm run db:migrate:deploy` | Run production migrations |
+| `npm run db:seed` | Seed database with initial data |
+| `npm run db:studio` | Open Prisma Studio (GUI database browser) |
+| `npm run db:reset` | Reset database (drop all + migrate + seed) |
+| `npm run db:push` | Push schema to database without migration |
 
 ---
 
-## API Overview
+## 🔌 API Overview
 
-All API endpoints are documented interactively via **Swagger UI** at `/api/docs`. A high‑level grouping:
-
-| Group            | Description                                 |
-|------------------|---------------------------------------------|
-| **Auth**         | Register, login, refresh, logout            |
-| **Users**        | Admin CRUD, role assignment                 |
-| **Roles**        | Create, update, delete roles & permissions  |
-| **Permissions**  | List all available permissions              |
-| **Products**     | Manage products, categories, SLA rules, teams|
-| **Teams**        | Team and member management                  |
-| **Complaints**   | Ticket CRUD, status changes, comments, attachments, timeline |
-| **Notifications**| In‑app notifications, mark read             |
-| **Dashboard**    | Staff, team, product, executive KPIs        |
-| **Analytics**    | Aggregated performance across entities      |
-| **System**       | Global configuration                        |
-| **Webhooks**     | Manage event subscriptions                  |
-
-All responses are wrapped in a consistent envelope:
+All API routes are prefixed with `/api/v1/`. Responses follow a consistent envelope:
 
 ```json
 {
@@ -269,155 +236,191 @@ All responses are wrapped in a consistent envelope:
 }
 ```
 
-Pagination, sorting, and advanced filtering are supported on list endpoints.
+Error responses:
 
----
-
-## Core Concepts
-
-### Auto‑Assignment Engine
-
-When a complaint is submitted:
-
-1. **Identify product** – Extract `productId` from the request.
-2. **Find responsible team** – Look up `product_team_mappings` (primary team first, then weighted).
-3. **Select agent (least load)** – For the target team, count open/assigned complaints per member. Pick the agent with the fewest active tickets (weighted by `load_weight`).
-4. **Record assignment** – Insert into `complaint_assignments` with `assigned_by = 'system'`.
-5. **Set SLA deadlines** – Based on the product’s SLA rule for the complaint’s severity & priority.
-6. **Notify** – Create an in‑app notification for the assigned agent and fire `complaint.assigned` webhook.
-
-Manual reassignment (`POST /complaints/{id}/assign`) overrides this and logs who made the change.
-
-### Complaint Lifecycle
-
-Allowed transitions are strictly enforced by a state machine:
-
-| Current Status         | Possible Next Statuses                             |
-|------------------------|----------------------------------------------------|
-| `open`                 | `assigned`, `closed` (admin only)                  |
-| `assigned`             | `in_progress`, `escalated`, `closed`               |
-| `in_progress`          | `waiting_for_customer`, `resolved`, `escalated`    |
-| `waiting_for_customer` | `in_progress`, `resolved`, `closed`                |
-| `resolved`             | `closed`, `reopened`                               |
-| `reopened`             | `assigned`, `in_progress`, `closed`                |
-| `closed`               | `reopened`                                         |
-| `escalated`            | `assigned`, `in_progress`, `resolved`              |
-
-Any invalid transition returns a `409 Conflict` error.
-
-### Role‑Based Access Control (RBAC)
-
-Five roles are pre‑defined, each with a set of permissions scopes (e.g., `complaint:create`, `dashboard:team`).  
-A user may have multiple roles; the effective permissions are the union of all roles.
-
-| Role              | Key Permissions                                              |
-|-------------------|--------------------------------------------------------------|
-| **Customer**      | Create complaint, view own tickets                           |
-| **Support Agent** | View assigned/all tickets, update status, add comments       |
-| **Team Lead**     | Agent rights + reassign, escalate, view team dashboard       |
-| **Product Manager**| Full product management, product analytics                  |
-| **Admin**         | Everything – user/role/permission management, system settings|
-
-Permission enforcement is done in the API route handlers using a custom `authorize` helper that checks the JWT claims.
-
-### SLA Tracking & Breach Detection
-
-- **SLA Rules** are defined per product, severity, and priority combination (e.g., `first_response` = 60 min, `resolution` = 480 min).
-- When a complaint is created/assigned, deadlines are calculated and stored in `sla_first_response_deadline` and `sla_resolution_deadline`.
-- A background job (cron) checks every minute for breached deadlines, updates dashboard metrics, and triggers `complaint.sla_breached` events.
-- The `slaStatus` filter on the complaint list lets you view `breached`, `at_risk` (within 10% of deadline), or `compliant` tickets.
-
----
-
-## Dashboards & Analytics
-
-ResolveX provides five dashboard views:
-
-1. **Staff Dashboard** – Assigned, completed, pending, reopened, escalated tickets; average resolution time; productivity score.
-2. **Team Dashboard** – Total open, backlog, resolution rate, SLA compliance %, average load per member.
-3. **Product Dashboard** – Complaint volume, category breakdown, top frequent issues, SLA violation rate, resolution trend.
-4. **Executive Dashboard** – High‑level KPIs: total/open/resolved today, SLA breaches, avg resolution time, top teams and staff.
-5. **Analytics Endpoints** – `GET /analytics/staff-performance`, `/team-performance`, `/product-performance` return aggregated lists for cross‑entity comparison.
-
-All metrics support custom date ranges (`dateFrom` / `dateTo`) and are pre‑aggregated using database queries or materialized views for performance.
-
----
-
-## Webhooks & Events
-
-External services can subscribe to real‑time events via the Webhook API (`/api/v1/webhooks/subscriptions`). Four event types are available:
-
-- `complaint.created`
-- `complaint.assigned`
-- `complaint.status_changed`
-- `complaint.sla_breached`
-
-Each webhook payload is signed with an HMAC‑SHA256 signature (header `X-ResolveX-Signature`) to verify authenticity. Subscriptions are managed by administrators with the `webhook:manage` permission.
-
----
-
-## Security
-
-- **Password hashing**: bcrypt with cost factor 12.
-- **JWT**: Access tokens expire after 15 minutes; refresh tokens are rotated and revoked on logout.
-- **Rate limiting**: Global 1000 req/min per user; stricter on auth endpoints (5 req/min per IP).
-- **CORS**: Only allowed origins configured.
-- **Input validation**: All API inputs are validated with Zod; file uploads check MIME type and size.
-- **Audit**: Every state mutation is recorded in immutable audit logs.
-- **HTTPS**: Enforced in production.
-
----
-
-## Deployment
-
-### Vercel (Recommended)
-
-1. Push the repository to GitHub.
-2. Import into Vercel.
-3. Set all environment variables.
-4. Add a `postinstall` script: `prisma generate && prisma migrate deploy`.
-5. Deploy.
-
-### Docker
-
-A `Dockerfile` is provided:
-
-```dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npx prisma generate
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": [{ "field": "email", "message": "Invalid email", "constraint": "email" }]
+  }
+}
 ```
 
-Combine with a `docker-compose.yml` that includes PostgreSQL.
+### Resource Endpoints
+
+| Resource | Base Path | Key Operations |
+|----------|-----------|----------------|
+| **Auth** | `/auth` | Login, register, logout, refresh, me |
+| **Complaints** | `/complaints` | CRUD, assign, status, resolve, close, reopen, escalate |
+| **Comments** | `/complaints/{id}/comments` | Add, edit, delete, list |
+| **Attachments** | `/complaints/{id}/attachments` | Upload, delete, list |
+| **Timeline** | `/complaints/{id}/timeline` | Activity timeline |
+| **Products** | `/products` | CRUD, team mappings |
+| **Teams** | `/teams` | CRUD, member management |
+| **Users** | `/users` | CRUD, role assignment |
+| **Roles** | `/roles` | List roles |
+| **Dashboard** | `/dashboard` | Overview, product, staff, team analytics |
+
+> 📖 **Full API reference** — See [docs/API.md](./docs/API.md)
 
 ---
 
-## Contributing
+## 🏛 Architecture
 
-Contributions are welcome! Please follow these steps:
+ResolveX follows a **layered architecture** within the Next.js App Router:
 
-1. Fork the repo.
-2. Create a feature branch (`git checkout -b feature/amazing-feature`).
-3. Commit your changes (`git commit -m 'Add amazing feature'`).
-4. Push to the branch (`git push origin feature/amazing-feature`).
-5. Open a Pull Request.
+```
+┌─────────────────────────────────────────────────────────┐
+│                      Page Layer                          │
+│      (React Server/Client Components + Hooks)           │
+├─────────────────────────────────────────────────────────┤
+│                     API Route Layer                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐ │
+│  │ Auth     │  │ Complaints│  │ Products │  │Teams   │ │
+│  └──────────┘  └──────────┘  └──────────┘  └─────────┘ │
+├──────────────┬──────────────────────────────────────────┤
+│ Middleware   │  Proxy (auth header injection)           │
+│              │  Request logging (withLogging wrapper)   │
+├──────────────┴──────────────────────────────────────────┤
+│                   Service Layer                          │
+│  ┌─────────────────┐  ┌──────────────────────────────┐  │
+│  │ Status Workflow  │  │ Auto-Assignment Engine      │  │
+│  └─────────────────┘  └──────────────────────────────┘  │
+├─────────────────────────────────────────────────────────┤
+│                    Library Layer                          │
+│  ┌──────┐ ┌──────┐ ┌────────┐ ┌───────┐ ┌──────────┐  │
+│  │ Auth │ │ RBAC │ │ Logger │ │ Zod   │ │Prisma    │  │
+│  └──────┘ └──────┘ └────────┘ └───────┘ └──────────┘  │
+├─────────────────────────────────────────────────────────┤
+│                     Data Layer                           │
+│            PostgreSQL + Prisma ORM                      │
+└─────────────────────────────────────────────────────────┘
+```
 
-Ensure your code passes linting (`npm run lint`), formatting (`npm run format`), and unit tests (`npm run test`).
+> 📖 **Detailed architecture** — See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 
 ---
 
-## License
+## 🔒 Role-Based Access Control
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Five roles with progressive permission sets:
+
+| Role | Scope | Key Permissions |
+|------|-------|-----------------|
+| **CUSTOMER** | Own complaints | Create, read own, comment, attach files |
+| **SUPPORT_AGENT** | All complaints | Read all, update status, resolve, comment |
+| **TEAM_LEAD** | Team oversight | Reassign, escalate, close, reopen, team dashboards |
+| **PRODUCT_MANAGER** | Product config | Manage products, read teams, product analytics |
+| **ADMIN** | Full system | All permissions including user/role management |
+
+> 📖 **RBAC details** — See [docs/RBAC.md](./docs/RBAC.md)
 
 ---
 
-<div align="center">
-Made with ❤️ for efficient complaint resolution.
-</div>
+## 🔄 Complaint Workflow
+
+The complaint lifecycle follows a state machine with valid transitions:
+
+```
+OPEN → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED
+                     ↕                  ↕
+           WAITING_FOR_CUSTOMER     REOPENED
+                          
+All states → ESCALATED (end state is contextual)
+```
+
+Each status transition:
+- Validates permissions
+- Enforces business rules (e.g., resolution notes required to resolve)
+- Logs to the activity timeline
+- Updates SLA tracking
+- Sends notifications
+
+> 📖 **Workflow details** — See [docs/COMPLAINT_WORKFLOW.md](./docs/COMPLAINT_WORKFLOW.md)
+
+---
+
+## 🗄 Database
+
+PostgreSQL 16 with Prisma 7 ORM. Key models:
+
+- **User** — Employees and customers with authentication
+- **Role / Permission / UserRole / RolePermission** — RBAC system
+- **Product / ProductCategory** — Product catalog
+- **Team / TeamMember** — Team structure
+- **Complaint** — Core complaint entity with full lifecycle tracking
+- **Comment / Attachment** — Collaboration features
+- **ComplaintTimeline** — Activity audit trail
+- **Assignment / Escalation / SLATracking** — Operational tracking
+- **StaffPerformanceMetric / TeamPerformanceMetric / ProductComplaintMetric** — Analytics
+
+> 📖 **Full schema** — See [docs/DATABASE.md](./docs/DATABASE.md)
+
+---
+
+## ☁️ Deployment
+
+Deployed on **Vercel** with the following configuration:
+
+- **Build command**: `prisma generate && npm run build`
+- **Framework**: Next.js (auto-detected)
+- **Security headers**: HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+
+> 📖 **Deployment guide** — See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
+
+---
+
+## 🧪 Testing
+
+```bash
+# TypeScript type check
+npx tsc --noEmit
+
+# Build check (includes TypeScript compilation)
+npm run build
+
+# Lint
+npm run lint
+```
+
+---
+
+## 📚 Documentation
+
+All documentation is in the `docs/` directory:
+
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System architecture deep dive |
+| [API.md](./docs/API.md) | Complete API reference |
+| [RBAC.md](./docs/RBAC.md) | Role-based access control guide |
+| [DATABASE.md](./docs/DATABASE.md) | Database schema & relationships |
+| [COMPLAINT_WORKFLOW.md](./docs/COMPLAINT_WORKFLOW.md) | Complaint lifecycle & state machine |
+| [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Vercel deployment guide |
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is proprietary software. All rights reserved.
+
+---
+
+## 🙏 Acknowledgments
+
+- Built with [Next.js](https://nextjs.org/), [React](https://react.dev/), [Prisma](https://www.prisma.io/), [Tailwind CSS](https://tailwindcss.com/)
+- File storage powered by [Cloudinary](https://cloudinary.com/)
+- Deployed on [Vercel](https://vercel.com/)

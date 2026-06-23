@@ -94,6 +94,7 @@ async function main() {
         "complaint:read:own",
         "complaint:comment",
         "complaint:attachment",
+        "product:read",
       ],
     },
     {
@@ -106,6 +107,7 @@ async function main() {
         "complaint:resolve",
         "complaint:comment",
         "complaint:attachment",
+        "product:read",
         "dashboard:staff",
       ],
     },
@@ -123,6 +125,7 @@ async function main() {
         "complaint:reopen",
         "complaint:comment",
         "complaint:attachment",
+        "product:read",
         "dashboard:staff",
         "dashboard:team",
         "team:read",
