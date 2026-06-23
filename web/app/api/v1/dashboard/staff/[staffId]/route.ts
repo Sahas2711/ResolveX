@@ -21,7 +21,7 @@ import {
   internalErrorResponse,
 } from "@/lib/response";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface StaffMetricsResponse {
   staffId: string;
@@ -69,16 +69,16 @@ export async function GET(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.DASHBOARD_STAFF);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract staffId ──────────────────────────────────────────────
+    // -- Extract staffId ----------------------------------------------
     const { staffId } = await params;
     ctx.staffId = staffId;
 
-    // ── Verify staff exists and is active ────────────────────────────
+    // -- Verify staff exists and is active ----------------------------
     const staff = await prisma.user.findFirst({
       where: {
         id: staffId,
@@ -99,7 +99,7 @@ export async function GET(
 
     const staffName = `${staff.firstName} ${staff.lastName}`;
 
-    // ── Parse optional date range ────────────────────────────────────
+    // -- Parse optional date range ------------------------------------
     const url = new URL(request.url);
     const dateFrom = url.searchParams.get("dateFrom");
     const dateTo = url.searchParams.get("dateTo");
@@ -115,7 +115,7 @@ export async function GET(
     ctx.dateFrom = dateFrom ?? "none";
     ctx.dateTo = dateTo ?? "none";
 
-    // ── Run all queries in parallel ──────────────────────────────────
+    // -- Run all queries in parallel ----------------------------------
     const [
       statusCounts,
       resolvedComplaints,
@@ -177,7 +177,7 @@ export async function GET(
       }),
     ]);
 
-    // ── Build status map ─────────────────────────────────────────────
+    // -- Build status map ---------------------------------------------
     const statusMap = new Map<string, number>();
     for (const s of statusCounts) {
       statusMap.set(s.currentStatus, s._count.id);
@@ -189,7 +189,7 @@ export async function GET(
     const reopened = statusMap.get("REOPENED") ?? 0;
     const escalated = statusMap.get("ESCALATED") ?? 0;
 
-    // ── Average resolution time (hours) ──────────────────────────────
+    // -- Average resolution time (hours) ------------------------------
     const totalResolutionMs = resolvedComplaints.reduce(
       (sum, c) => {
         if (c.resolvedAt) return sum + (c.resolvedAt.getTime() - c.createdAt.getTime());
@@ -202,7 +202,7 @@ export async function GET(
         ? Math.round((totalResolutionMs / resolvedComplaints.length / (1000 * 60 * 60)) * 100) / 100
         : null;
 
-    // ── Average first response time (minutes) ────────────────────────
+    // -- Average first response time (minutes) ------------------------
     const firstResponseTimes = firstResponseData
       .filter((c) => c.comments.length > 0)
       .map((c) => c.comments[0].createdAt.getTime() - c.createdAt.getTime());
@@ -217,7 +217,7 @@ export async function GET(
           ) / 100
         : null;
 
-    // ── Productivity score (0–100) ───────────────────────────────────
+    // -- Productivity score (0–100) -----------------------------------
     // Weighted formula: completion ratio adjusted for active workload
     // Base: percentage of complaints that reached RESOLVED or CLOSED
     // Adjusted: lower weight if many complaints are still active

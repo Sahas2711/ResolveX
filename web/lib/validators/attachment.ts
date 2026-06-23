@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-// ── Attachment Response Shape (matches API spec) ───────────────────────────
+// -- Attachment Response Shape (matches API spec) ---------------------------
 
 export interface AttachmentResponse {
   id: string;
@@ -19,7 +19,7 @@ export interface AttachmentResponse {
   createdAt: string;
 }
 
-// ── Prisma Select Shape ────────────────────────────────────────────────────
+// -- Prisma Select Shape ----------------------------------------------------
 
 export interface AttachmentSelectShape {
   id: string;
@@ -37,7 +37,7 @@ export interface AttachmentSelectShape {
   };
 }
 
-// ── Helper: Map a Prisma Attachment row to API response shape ──────────────
+// -- Helper: Map a Prisma Attachment row to API response shape --------------
 
 export function toAttachmentResponse(
   attachment: AttachmentSelectShape,
@@ -50,12 +50,12 @@ export function toAttachmentResponse(
     fileSize: attachment.fileSize,
     fileUrl: attachment.storageUrl,
     uploadedBy: attachment.uploadedBy,
-    uploadedByName: `${attachment.uploadedByUser.firstName} ${attachment.uploadedByUser.lastName}`,
-    createdAt: attachment.createdAt.toISOString(),
+    uploadedByName: attachment.uploadedByUser ? `${attachment.uploadedByUser.firstName} ${attachment.uploadedByUser.lastName}` : "Unknown",
+    createdAt: attachment.createdAt?.toISOString() ?? new Date(0).toISOString(),
   };
 }
 
-// ── Prisma select for reusability ──────────────────────────────────────────
+// -- Prisma select for reusability ------------------------------------------
 
 export const attachmentSelect = {
   id: true,

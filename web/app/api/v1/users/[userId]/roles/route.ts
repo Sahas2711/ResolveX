@@ -21,7 +21,7 @@ import {
   toUserResponse,
 } from "@/lib/validators/user";
 
-// ── POST: Assign Roles ─────────────────────────────────────────────────────
+// -- POST: Assign Roles -----------------------------------------------------
 
 /**
  * POST /api/v1/users/{userId}/roles
@@ -51,7 +51,7 @@ export async function POST(
     const { userId } = await params;
     ctx.targetUserId = userId;
 
-    // ── Verify user exists ───────────────────────────────────────────
+    // -- Verify user exists -------------------------------------------
     const user = await prisma.user.findFirst({
       where: { id: userId, deletedAt: null },
       select: { id: true },
@@ -60,7 +60,7 @@ export async function POST(
       return notFoundResponse("User not found");
     }
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = assignRolesSchema.safeParse(body);
     if (!parsed.success) {
@@ -74,7 +74,7 @@ export async function POST(
 
     const { roleIds } = parsed.data;
 
-    // ── Verify all roles exist ────────────────────────────────────────
+    // -- Verify all roles exist ----------------------------------------
     const existingRoles = await prisma.role.findMany({
       where: { id: { in: roleIds } },
       select: { id: true, name: true },
@@ -88,7 +88,7 @@ export async function POST(
       );
     }
 
-    // ── Filter out already-assigned roles ─────────────────────────────
+    // -- Filter out already-assigned roles -----------------------------
     const existingAssignments = await prisma.userRole.findMany({
       where: { userId, roleId: { in: roleIds } },
       select: { roleId: true },
@@ -103,7 +103,7 @@ export async function POST(
       return successResponse(toUserResponse(fullUser));
     }
 
-    // ── Assign roles ─────────────────────────────────────────────────
+    // -- Assign roles -------------------------------------------------
     await prisma.userRole.createMany({
       data: newRoleIds.map((roleId) => ({ userId, roleId })),
     });
@@ -115,7 +115,7 @@ export async function POST(
         .map((r) => r.name),
     });
 
-    // ── Return updated user ──────────────────────────────────────────
+    // -- Return updated user ------------------------------------------
     const updatedUser = await findFullUser(userId);
     if (!updatedUser) return notFoundResponse("User not found");
     return successResponse(toUserResponse(updatedUser));
@@ -125,7 +125,7 @@ export async function POST(
   }
 }
 
-// ── DELETE: Revoke Role ────────────────────────────────────────────────────
+// -- DELETE: Revoke Role ----------------------------------------------------
 
 /**
  * DELETE /api/v1/users/{userId}/roles?roleId={roleId}
@@ -153,7 +153,7 @@ export async function DELETE(
     const { userId } = await params;
     ctx.targetUserId = userId;
 
-    // ── Extract roleId from query ────────────────────────────────────
+    // -- Extract roleId from query ------------------------------------
     const url = new URL(request.url);
     const roleId = url.searchParams.get("roleId");
 
@@ -167,7 +167,7 @@ export async function DELETE(
       ]);
     }
 
-    // ── Verify user exists ───────────────────────────────────────────
+    // -- Verify user exists -------------------------------------------
     const user = await prisma.user.findFirst({
       where: { id: userId, deletedAt: null },
       select: { id: true },
@@ -176,7 +176,7 @@ export async function DELETE(
       return notFoundResponse("User not found");
     }
 
-    // ── Verify role assignment exists ────────────────────────────────
+    // -- Verify role assignment exists --------------------------------
     const assignment = await prisma.userRole.findUnique({
       where: { userId_roleId: { userId, roleId } },
     });
@@ -184,7 +184,7 @@ export async function DELETE(
       return notFoundResponse("Role assignment not found");
     }
 
-    // ── Revoke role ─────────────────────────────────────────────────
+    // -- Revoke role -------------------------------------------------
     await prisma.userRole.delete({
       where: { userId_roleId: { userId, roleId } },
     });
@@ -201,7 +201,7 @@ export async function DELETE(
   }
 }
 
-// ── Helper: fetch full user with roles ─────────────────────────────────────
+// -- Helper: fetch full user with roles -------------------------------------
 
 async function findFullUser(userId: string) {
   return prisma.user.findFirst({

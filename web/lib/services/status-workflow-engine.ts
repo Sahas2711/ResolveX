@@ -22,7 +22,7 @@ import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { Permissions } from "@/lib/permissions";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 /** Prisma ComplaintStatus enum values */
 export type PrismaComplaintStatus =
@@ -70,7 +70,7 @@ export function toPrismaStatus(status: string): PrismaComplaintStatus | null {
   return map[status] ?? null;
 }
 
-// ── Transition Definitions ─────────────────────────────────────────────────
+// -- Transition Definitions -------------------------------------------------
 
 interface TransitionDef {
   /** The target Prisma status */
@@ -367,7 +367,7 @@ export async function executeTransition(
   const oldStatus = currentStatus as PrismaComplaintStatus;
   const newStatus = def.to;
 
-  // ── Build update payload ──────────────────────────────────────────────
+  // -- Build update payload ----------------------------------------------
   const updateData: Record<string, unknown> = {
     currentStatus: newStatus,
   };
@@ -397,13 +397,13 @@ export async function executeTransition(
     updateData.resolutionSummary = remarks;
   }
 
-  // ── 1. Update the complaint status ────────────────────────────────────
+  // -- 1. Update the complaint status ------------------------------------
   await tx.complaint.update({
     where: { id: complaintId },
     data: updateData,
   });
 
-  // ── 2. Create status history record ───────────────────────────────────
+  // -- 2. Create status history record -----------------------------------
   await tx.complaintStatusHistory.create({
     data: {
       complaintId,
@@ -414,7 +414,7 @@ export async function executeTransition(
     },
   });
 
-  // ── 3. Create timeline event ──────────────────────────────────────────
+  // -- 3. Create timeline event ------------------------------------------
   const eventType = determineEventType(oldStatus, newStatus);
   await tx.complaintTimeline.create({
     data: {
@@ -472,7 +472,7 @@ export async function buildStatusNotifications(
 ): Promise<StatusNotification[]> {
   const notifications: StatusNotification[] = [];
 
-  // ── Resolution notifications ───────────────────────────────────────
+  // -- Resolution notifications ---------------------------------------
   if (newStatus === "RESOLVED") {
     // Notify team leads that resolution is submitted
     const complaint = await prisma.complaint.findUnique({
@@ -514,7 +514,7 @@ export async function buildStatusNotifications(
     }
   }
 
-  // ── Escalation notifications ────────────────────────────────────────
+  // -- Escalation notifications ----------------------------------------
   if (newStatus === "ESCALATED") {
     const complaint = await prisma.complaint.findUnique({
       where: { id: complaintId },

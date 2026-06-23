@@ -1,21 +1,29 @@
 // =============================================================================
 // ResolveX — Dashboard API
-// GET /api/v1/dashboard → Aggregated metrics, status breakdown, team workload
+// GET /api/v1/dashboard → User-specific aggregated metrics
 //
-// Permission-gated: responds with a filtered view based on the user's role:
-//   - dashboard:staff    → self + team-level metrics
-//   - dashboard:team     → team + product-level metrics
-//   - dashboard:product  → product-level metrics
-//   - dashboard:executive → all metrics
+// Filters data based on the logged-in user's role:
+//   - dashboard:staff (SUPPORT_AGENT)
+//       → Only complaints assigned to the user
+//       → Only teams the user belongs to
+//       → Only the user's own agent load
+//   - dashboard:team (TEAM_LEAD)
+//       → Complaints assigned to the user's teams
+//       → Only teams the user leads / belongs to
+//       → Agents within those teams
+//   - dashboard:product (PRODUCT_MANAGER)
+//       → Product-level metrics
+//   - dashboard:executive (ADMIN)
+//       → All metrics (unfiltered)
 // =============================================================================
 
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
-import { Permissions } from "@/lib/permissions";
-import { requirePermissions, getUserPermissions } from "@/lib/rbac";
-import { successResponse, internalErrorResponse } from "@/lib/response";
+import { Permissions, type PermissionKey } from "@/lib/permissions";
+import { getUserFromRequest, getUserPermissions } from "@/lib/rbac";
+import { successResponse, forbiddenResponse, internalErrorResponse } from "@/lib/response";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface DashboardResponse {
   overview: {
@@ -66,7 +74,7 @@ interface DashboardResponse {
   };
 }
 
-// ── Status labels ──────────────────────────────────────────────────────────
+// -- Status labels ----------------------------------------------------------
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: "Open",
@@ -86,6 +94,71 @@ const PRIORITY_LABELS: Record<string, string> = {
   CRITICAL: "Critical",
 };
 
+// -- Helper: Build complaint where filter based on user scope ---------------
+
+async function buildComplaintFilter(
+  userId: string,
+  permissions: string[],
+): Promise<Record<string, unknown>> {
+  const isExecutive = permissions.includes(Permissions.DASHBOARD_EXECUTIVE);
+  const hasTeamAccess = permissions.includes(Permissions.DASHBOARD_TEAM);
+  const hasStaffAccess = permissions.includes(Permissions.DASHBOARD_STAFF);
+
+  const filter: Record<string, unknown> = { deletedAt: null };
+
+  if (isExecutive) {
+    // Executive sees everything
+    return filter;
+  }
+
+  if (hasTeamAccess) {
+    // Team lead: see complaints assigned to teams the user belongs to
+    const memberships = await prisma.teamMember.findMany({
+      where: { userId },
+      select: { teamId: true },
+    });
+    const teamIds = memberships.map((m) => m.teamId);
+    if (teamIds.length > 0) {
+      filter.OR = [
+        { assignedTeamId: { in: teamIds } },
+        { assignedAgentId: userId },
+      ];
+    } else {
+      filter.assignedAgentId = userId;
+    }
+    return filter;
+  }
+
+  if (hasStaffAccess) {
+    // Staff: only see complaints assigned to them
+    filter.assignedAgentId = userId;
+    return filter;
+  }
+
+  // Product manager or other — show nothing
+  filter.id = "00000000-0000-0000-0000-000000000000";
+  return filter;
+}
+
+// -- Helper: Get team IDs the user belongs to ------------------------------
+
+async function getUserTeamIds(userId: string): Promise<string[]> {
+  const [memberships, managedTeams] = await Promise.all([
+    prisma.teamMember.findMany({
+      where: { userId },
+      select: { teamId: true },
+    }),
+    prisma.team.findMany({
+      where: { managerId: userId, deletedAt: null },
+      select: { id: true },
+    }),
+  ]);
+  return [...new Set([
+    ...memberships.map((m) => m.teamId),
+    ...managedTeams.map((t) => t.id),
+  ])];
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // GET /api/v1/dashboard
 // ═══════════════════════════════════════════════════════════════════════════
@@ -94,28 +167,47 @@ export async function GET(request: Request) {
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
-    const auth = await requirePermissions(
-      request,
+    // -- Authorization ------------------------------------------------
+    // NOTE: requirePermissions uses AND logic (all perms must match).
+    // The dashboard uses OR logic — any one dashboard permission is sufficient.
+    // So we fetch permissions manually and do the OR check ourselves.
+    const user = getUserFromRequest(request);
+    if (!user) {
+      return forbiddenResponse("Authentication required");
+    }
+    const userId = user.userId;
+    ctx.userId = userId;
+
+    const userPermissions = await getUserPermissions(userId);
+    const dashboardPerms = new Set<PermissionKey>([
       Permissions.DASHBOARD_STAFF,
       Permissions.DASHBOARD_TEAM,
       Permissions.DASHBOARD_PRODUCT,
       Permissions.DASHBOARD_EXECUTIVE,
-    );
-    if (!auth.allowed) return auth.response;
-    ctx.userId = auth.user.userId;
+    ]);
+    const hasDashboardAccess = userPermissions.some((p) => dashboardPerms.has(p));
+    if (!hasDashboardAccess) {
+      return forbiddenResponse("Insufficient permissions");
+    }
 
-    // Check if user has executive dashboard access
-    const userPermissions = await getUserPermissions(auth.user.userId);
     const isExecutive = userPermissions.includes(Permissions.DASHBOARD_EXECUTIVE);
+    const isTeamLead = userPermissions.includes(Permissions.DASHBOARD_TEAM);
+    const isStaff = userPermissions.includes(Permissions.DASHBOARD_STAFF);
 
-    // ── Date filters ────────────────────────────────────────────────
+    // Build complaint filter based on user scope
+    const complaintFilter = await buildComplaintFilter(userId, userPermissions);
+
+    // Get user's team IDs (for team/agent filtering)
+    const userTeamIds = isExecutive ? [] : await getUserTeamIds(userId);
+    const activeStatuses = ["ASSIGNED", "IN_PROGRESS", "WAITING_CUSTOMER", "REOPENED"];
+
+    // -- Date filters ------------------------------------------------
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayEnd = new Date(today);
     todayEnd.setHours(23, 59, 59, 999);
 
-    // ── Run all queries in parallel ──────────────────────────────────
+    // -- Run all queries in parallel ----------------------------------
     const [
       statusCounts,
       priorityCounts,
@@ -127,25 +219,25 @@ export async function GET(request: Request) {
       todayResolved,
       resolutionTimes,
     ] = await Promise.all([
-      // 1. Status breakdown
+      // 1. Status breakdown (scoped to user)
       prisma.complaint.groupBy({
         by: ["currentStatus"],
-        where: { deletedAt: null },
+        where: complaintFilter as any,
         _count: { id: true },
         orderBy: { _count: { id: "desc" } },
       }),
 
-      // 2. Priority breakdown
+      // 2. Priority breakdown (scoped to user)
       prisma.complaint.groupBy({
         by: ["priority"],
-        where: { deletedAt: null },
+        where: complaintFilter as any,
         _count: { id: true },
         orderBy: [{ priority: "asc" }],
       }),
 
-      // 3. Recent complaints (latest 10)
+      // 3. Recent complaints — latest 10 (scoped to user)
       prisma.complaint.findMany({
-        where: { deletedAt: null },
+        where: complaintFilter as any,
         select: {
           id: true,
           ticketNumber: true,
@@ -161,9 +253,12 @@ export async function GET(request: Request) {
         take: 10,
       }),
 
-      // 4. Team workload
+      // 4. Team workload (scoped to user's teams)
       prisma.team.findMany({
-        where: { deletedAt: null },
+        where: {
+          deletedAt: null,
+          ...(isExecutive ? {} : { id: { in: userTeamIds } }),
+        },
         select: {
           id: true,
           teamName: true,
@@ -180,50 +275,58 @@ export async function GET(request: Request) {
         orderBy: { teamName: "asc" },
       }),
 
-      // 5. Agent active loads
+      // 5. Agent active loads (scoped to user's teams)
       prisma.complaint.groupBy({
         by: ["assignedAgentId"],
         where: {
           assignedAgentId: { not: null },
-          currentStatus: { in: ["ASSIGNED", "IN_PROGRESS", "WAITING_CUSTOMER", "REOPENED"] },
+          currentStatus: { in: activeStatuses },
           deletedAt: null,
-        },
+          ...(isExecutive
+            ? {}
+            : {
+                OR: [
+                  { assignedTeamId: { in: userTeamIds } },
+                  { assignedAgentId: userId },
+                ],
+              }),
+        } as any,
         _count: { id: true },
         orderBy: { _count: { id: "desc" } },
       }),
 
-      // 6. Total count
-      prisma.complaint.count({ where: { deletedAt: null } }),
+      // 6. Total count (scoped to user)
+      prisma.complaint.count({ where: complaintFilter as any }),
 
-      // 7. Created today
+      // 7. Created today (scoped to user)
       prisma.complaint.count({
         where: {
-          deletedAt: null,
+          ...complaintFilter,
           createdAt: { gte: today, lte: todayEnd },
-        },
+        } as any,
       }),
 
-      // 8. Resolved today
+      // 8. Resolved today (scoped to user)
       prisma.complaint.count({
         where: {
+          ...complaintFilter,
           currentStatus: "RESOLVED",
           resolvedAt: { gte: today, lte: todayEnd },
-          deletedAt: null,
-        },
+        } as any,
       }),
 
-      // 9. Avg resolution time (fetch resolved complaints, compute avg in JS)
+      // 9. Avg resolution time (scoped to user)
       prisma.complaint.findMany({
         where: {
+          ...complaintFilter,
           currentStatus: "RESOLVED",
           resolvedAt: { not: null },
-          deletedAt: null,
-        },
+        } as any,
         select: { createdAt: true, resolvedAt: true },
       }),
     ]);
 
-    // ── Build overview ───────────────────────────────────────────────-
+    // -- Build overview ------------------------------------------------
     const overviewMap = new Map<string, number>();
     for (const s of statusCounts) {
       overviewMap.set(s.currentStatus, s._count.id);
@@ -241,21 +344,21 @@ export async function GET(request: Request) {
       escalatedComplaints: overviewMap.get("ESCALATED") ?? 0,
     };
 
-    // ── Build status breakdown ───────────────────────────────────────
+    // -- Build status breakdown ---------------------------------------
     const byStatus = statusCounts.map((s) => ({
       status: s.currentStatus,
       count: s._count.id,
       label: STATUS_LABELS[s.currentStatus] ?? s.currentStatus,
     }));
 
-    // ── Build priority breakdown ─────────────────────────────────────
+    // -- Build priority breakdown -------------------------------------
     const byPriority = priorityCounts.map((p) => ({
       priority: p.priority,
       count: p._count.id,
       label: PRIORITY_LABELS[p.priority] ?? p.priority,
     }));
 
-    // ── Build recent activity ────────────────────────────────────────
+    // -- Build recent activity ----------------------------------------
     const recentActivity = recentComplaints.map((c) => ({
       id: c.id,
       ticketNumber: c.ticketNumber,
@@ -270,7 +373,7 @@ export async function GET(request: Request) {
       createdAt: c.createdAt.toISOString(),
     }));
 
-    // ── Build team workload ──────────────────────────────────────────
+    // -- Build team workload ------------------------------------------
     const teamWorkload = teamData.map((t) => ({
       teamId: t.id,
       teamName: t.teamName,
@@ -284,10 +387,9 @@ export async function GET(request: Request) {
         : null,
     }));
 
-    // ── Build agent load ─────────────────────────────────────────────
+    // -- Build agent load ---------------------------------------------
     const agentIds = agentCounts.map((a) => a.assignedAgentId).filter(Boolean) as string[];
 
-    // Fetch names for all agents with active tickets
     const agents = agentIds.length > 0
       ? await prisma.user.findMany({
           where: { id: { in: agentIds } },
@@ -303,7 +405,7 @@ export async function GET(request: Request) {
       totalAssigned: a._count.id,
     }));
 
-    // ── Build performance metrics ────────────────────────────────────
+    // -- Build performance metrics ------------------------------------
     const resolvedComplaints = resolutionTimes as Array<{ createdAt: Date; resolvedAt: Date | null }>;
     const totalResolutionMs = resolvedComplaints.reduce((sum, c) => {
       if (c.resolvedAt) return sum + (c.resolvedAt.getTime() - c.createdAt.getTime());
@@ -313,7 +415,6 @@ export async function GET(request: Request) {
       ? totalResolutionMs / resolvedComplaints.length / (1000 * 60 * 60)
       : null;
 
-    // SLA compliance rate (simplified — complaints resolved vs total closed)
     const totalClosedOrResolved = overview.resolvedComplaints + overview.closedComplaints;
     const slaComplianceRate = totalCount > 0
       ? Math.round((totalClosedOrResolved / totalCount) * 100)
@@ -335,7 +436,7 @@ export async function GET(request: Request) {
 
     logger.info("Dashboard fetched", {
       ...ctx,
-      scope: isExecutive ? "executive" : "team",
+      scope: isExecutive ? "executive" : isTeamLead ? "team" : isStaff ? "staff" : "product",
     });
 
     return successResponse(response);

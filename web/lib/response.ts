@@ -35,7 +35,7 @@ export interface ApiErrorResponse {
 
 export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
 
-// ── Success Responses ──────────────────────────────────────────────────────
+// -- Success Responses ------------------------------------------------------
 
 export function successResponse<T>(data: T, meta?: PaginationMeta): Response {
   const body: ApiSuccessResponse<T> = { success: true, data };
@@ -54,7 +54,7 @@ export function noContentResponse(): Response {
   return new Response(null, { status: 204 });
 }
 
-// ── Error Responses ────────────────────────────────────────────────────────
+// -- Error Responses --------------------------------------------------------
 
 export function badRequestResponse(message: string, details?: ValidationErrorDetail[]): Response {
   const body: ApiErrorResponse = {

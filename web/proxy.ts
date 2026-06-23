@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { verifyAccessToken } from "@/lib/auth";
 import { logger, getClientIp, generateRequestId } from "@/lib/logger";
 
-// ── Public API paths that do not require authentication ─────────────────────
+// -- Public API paths that do not require authentication ---------------------
 const PUBLIC_API_PATHS = new Set([
   "/api/v1/auth/register",
   "/api/v1/auth/login",
@@ -11,7 +11,7 @@ const PUBLIC_API_PATHS = new Set([
   "/api/v1/health",
 ]);
 
-// ── Proxy function ─────────────────────────────────────────────────────────
+// -- Proxy function ---------------------------------------------------------
 /**
  * Auth & logging proxy that runs before every API route handler.
  *
@@ -35,7 +35,7 @@ export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", requestId);
 
-  // ── Log request ingress ───────────────────────────────────────────
+  // -- Log request ingress -------------------------------------------
   logger.debug("→ Proxy: request received", {
     requestId,
     ip,
@@ -43,7 +43,7 @@ export async function proxy(request: NextRequest) {
     method: request.method,
   });
 
-  // ── Public routes ─────────────────────────────────────────────────
+  // -- Public routes -------------------------------------------------
   if (PUBLIC_API_PATHS.has(pathname)) {
     logger.info("Proxy: public route — passing through", {
       requestId,
@@ -56,7 +56,7 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  // ── Extract Bearer token ──────────────────────────────────────────
+  // -- Extract Bearer token ------------------------------------------
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     logger.warn("Proxy: missing Authorization header — 401", {
@@ -79,7 +79,7 @@ export async function proxy(request: NextRequest) {
 
   const token = authHeader.slice(7);
 
-  // ── Verify access token ───────────────────────────────────────────
+  // -- Verify access token -------------------------------------------
   try {
     const decoded = await verifyAccessToken(token);
 
@@ -119,7 +119,7 @@ export async function proxy(request: NextRequest) {
   }
 }
 
-// ── Matcher config ─────────────────────────────────────────────────────────
+// -- Matcher config ---------------------------------------------------------
 // Proxy only runs on /api/v1/* routes. This avoids unnecessary invocations
 // on pages, static files, and other non-API routes.
 export const config = {

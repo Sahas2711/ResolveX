@@ -22,7 +22,7 @@ import {
   toComplaintResponse,
 } from "@/lib/validators/complaint";
 
-// ── Shared: Fetch complaint by ID ──────────────────────────────────────────
+// -- Shared: Fetch complaint by ID ------------------------------------------
 
 async function findComplaintOrNull(complaintId: string) {
   return prisma.complaint.findFirst({
@@ -97,22 +97,22 @@ export async function PUT(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_UPDATE);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract complaintId ──────────────────────────────────────────
+    // -- Extract complaintId ------------------------------------------
     const { complaintId } = await params;
     ctx.complaintId = complaintId;
 
-    // ── Verify complaint exists ──────────────────────────────────────
+    // -- Verify complaint exists --------------------------------------
     const existing = await findComplaintOrNull(complaintId);
     if (!existing) {
       return notFoundResponse("Complaint not found");
     }
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = updateComplaintSchema.safeParse(body);
 
@@ -127,7 +127,7 @@ export async function PUT(
 
     const { priority, severity, description, category: categoryName } = parsed.data;
 
-    // ── Validate: at least one field must be provided ─────────────────
+    // -- Validate: at least one field must be provided -----------------
     if (!priority && !severity && !description && !categoryName) {
       return validationErrorResponse([
         {
@@ -139,7 +139,7 @@ export async function PUT(
       ]);
     }
 
-    // ── Build update payload ──────────────────────────────────────────
+    // -- Build update payload ------------------------------------------
     const updateData: Record<string, unknown> = {};
 
     if (priority) {
@@ -177,7 +177,7 @@ export async function PUT(
       updateData.title = categoryName;
     }
 
-    // ── Update the complaint ──────────────────────────────────────────
+    // -- Update the complaint ------------------------------------------
     const updated = await prisma.complaint.update({
       where: { id: complaintId },
       data: updateData as any,

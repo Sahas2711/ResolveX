@@ -11,16 +11,16 @@ import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { internalErrorResponse } from "@/lib/response";
 
-// ── Server start timestamp (process lifetime) ───────────────────────────────
+// -- Server start timestamp (process lifetime) -------------------------------
 const SERVER_START = Date.now();
 
-// ── GET /api/v1/health ─────────────────────────────────────────────────────
+// -- GET /api/v1/health -----------------------------------------------------
 
 export async function GET() {
   const start = performance.now();
 
   try {
-    // ── Database Connectivity ─────────────────────────────────────────
+    // -- Database Connectivity -----------------------------------------
     let dbStatus: "healthy" | "unhealthy" = "healthy";
     let dbLatencyMs: number | null = null;
 
@@ -74,7 +74,7 @@ export async function GET() {
   }
 }
 
-// ── Helper ─────────────────────────────────────────────────────────────────
+// -- Helper -----------------------------------------------------------------
 
 function formatUptime(totalSeconds: number): string {
   const days = Math.floor(totalSeconds / 86400);

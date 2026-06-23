@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-// ── Create Comment Schema ──────────────────────────────────────────────────
+// -- Create Comment Schema --------------------------------------------------
 // API spec: POST /complaints/{complaintId}/comments
 // { content: string, internal?: boolean }
 
@@ -20,7 +20,7 @@ export const createCommentSchema = z.object({
 
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;
 
-// ── Edit Comment Schema ────────────────────────────────────────────────────
+// -- Edit Comment Schema ----------------------------------------------------
 // PATCH /complaints/{complaintId}/comments/{commentId}
 // { content: string }
 
@@ -34,7 +34,7 @@ export const editCommentSchema = z.object({
 
 export type EditCommentInput = z.infer<typeof editCommentSchema>;
 
-// ── Comment Response Shape ─────────────────────────────────────────────────
+// -- Comment Response Shape -------------------------------------------------
 
 export interface CommentResponse {
   id: string;
@@ -48,7 +48,7 @@ export interface CommentResponse {
   updatedAt: string;
 }
 
-// ── Prisma Select Shape ────────────────────────────────────────────────────
+// -- Prisma Select Shape ----------------------------------------------------
 
 export interface CommentSelectShape {
   id: string;
@@ -65,7 +65,7 @@ export interface CommentSelectShape {
   };
 }
 
-// ── Helper: Map a Prisma Comment row to API response shape ─────────────────
+// -- Helper: Map a Prisma Comment row to API response shape -----------------
 
 export function toCommentResponse(comment: CommentSelectShape): CommentResponse {
   return {
@@ -76,12 +76,12 @@ export function toCommentResponse(comment: CommentSelectShape): CommentResponse 
     content: comment.content,
     internal: comment.isInternal,
     isEdited: comment.isEdited,
-    createdAt: comment.createdAt.toISOString(),
-    updatedAt: comment.updatedAt.toISOString(),
+    createdAt: comment.createdAt?.toISOString() ?? new Date(0).toISOString(),
+    updatedAt: comment.updatedAt?.toISOString() ?? new Date(0).toISOString(),
   };
 }
 
-// ── Prisma select for reusability ──────────────────────────────────────────
+// -- Prisma select for reusability ------------------------------------------
 
 export const commentSelect = {
   id: true,

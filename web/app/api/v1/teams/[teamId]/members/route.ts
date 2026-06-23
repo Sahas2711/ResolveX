@@ -23,7 +23,7 @@ import {
   toTeamMemberResponse,
 } from "@/lib/validators/team";
 
-// ── GET: List Team Members ─────────────────────────────────────────────────
+// -- GET: List Team Members -------------------------------------------------
 
 /**
  * GET /api/v1/teams/{teamId}/members
@@ -45,7 +45,7 @@ export async function GET(
     const { teamId } = await params;
     ctx.teamId = teamId;
 
-    // ── Verify team exists ───────────────────────────────────────────
+    // -- Verify team exists -------------------------------------------
     const team = await prisma.team.findFirst({
       where: { id: teamId, deletedAt: null },
       select: { id: true },
@@ -55,7 +55,7 @@ export async function GET(
       return notFoundResponse("Team not found");
     }
 
-    // ── Fetch members ────────────────────────────────────────────────
+    // -- Fetch members ------------------------------------------------
     const members = await prisma.teamMember.findMany({
       where: { teamId },
       select: {
@@ -92,7 +92,7 @@ export async function GET(
   }
 }
 
-// ── POST: Add Member to Team ───────────────────────────────────────────────
+// -- POST: Add Member to Team -----------------------------------------------
 
 /**
  * POST /api/v1/teams/{teamId}/members
@@ -117,16 +117,16 @@ export async function POST(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.TEAM_UPDATE);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract teamId ───────────────────────────────────────────────
+    // -- Extract teamId -----------------------------------------------
     const { teamId } = await params;
     ctx.teamId = teamId;
 
-    // ── Verify team exists ───────────────────────────────────────────
+    // -- Verify team exists -------------------------------------------
     const team = await prisma.team.findFirst({
       where: { id: teamId, deletedAt: null },
       select: { id: true, teamName: true },
@@ -136,7 +136,7 @@ export async function POST(
       return notFoundResponse("Team not found");
     }
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = addMemberSchema.safeParse(body);
 
@@ -151,7 +151,7 @@ export async function POST(
 
     const { userId, role } = parsed.data;
 
-    // ── Verify user exists ───────────────────────────────────────────
+    // -- Verify user exists -------------------------------------------
     const user = await prisma.user.findFirst({
       where: { id: userId, deletedAt: null },
       select: { id: true, firstName: true, lastName: true, email: true },
@@ -161,7 +161,7 @@ export async function POST(
       return notFoundResponse("User not found");
     }
 
-    // ── Check if already a member ────────────────────────────────────
+    // -- Check if already a member ------------------------------------
     const existingMember = await prisma.teamMember.findUnique({
       where: { teamId_userId: { teamId, userId } },
     });
@@ -170,7 +170,7 @@ export async function POST(
       return conflictResponse("User is already a member of this team");
     }
 
-    // ── Add member ───────────────────────────────────────────────────
+    // -- Add member ---------------------------------------------------
     const member = await prisma.teamMember.create({
       data: {
         teamId,
@@ -212,7 +212,7 @@ export async function POST(
   }
 }
 
-// ── DELETE: Remove Member from Team ────────────────────────────────────────
+// -- DELETE: Remove Member from Team ----------------------------------------
 
 /**
  * DELETE /api/v1/teams/{teamId}/members?userId={userId}
@@ -234,12 +234,12 @@ export async function DELETE(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.TEAM_UPDATE);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract teamId and userId ────────────────────────────────────
+    // -- Extract teamId and userId ------------------------------------
     const { teamId } = await params;
     ctx.teamId = teamId;
 
@@ -258,7 +258,7 @@ export async function DELETE(
 
     ctx.memberUserId = userId;
 
-    // ── Verify team exists ───────────────────────────────────────────
+    // -- Verify team exists -------------------------------------------
     const team = await prisma.team.findFirst({
       where: { id: teamId, deletedAt: null },
       select: { id: true, teamName: true },
@@ -268,7 +268,7 @@ export async function DELETE(
       return notFoundResponse("Team not found");
     }
 
-    // ── Verify membership exists ─────────────────────────────────────
+    // -- Verify membership exists -------------------------------------
     const membership = await prisma.teamMember.findUnique({
       where: { teamId_userId: { teamId, userId } },
     });
@@ -277,7 +277,7 @@ export async function DELETE(
       return notFoundResponse("User is not a member of this team");
     }
 
-    // ── Remove member ────────────────────────────────────────────────
+    // -- Remove member ------------------------------------------------
     await prisma.teamMember.delete({
       where: { teamId_userId: { teamId, userId } },
     });

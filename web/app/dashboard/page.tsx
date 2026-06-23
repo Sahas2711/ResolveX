@@ -5,11 +5,24 @@ import { useRouter } from "next/navigation";
 import { getAccessToken, useAuth } from "@/hooks/useAuth";
 import { Permissions } from "@/lib/permissions";
 import AppNavigation from "@/components/AppNavigation";
-import StaffMetricsWidget from "@/components/dashboard/StaffMetricsWidget";
-import TeamMetricsWidget from "@/components/dashboard/TeamMetricsWidget";
-import ProductAnalyticsWidget from "@/components/dashboard/ProductAnalyticsWidget";
+import dynamic from "next/dynamic";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+const StaffMetricsWidget = dynamic(() => import("@/components/dashboard/StaffMetricsWidget"), {
+  loading: () => <div className="animate-pulse rounded-2xl p-8" style={{ background: "rgba(19,26,36,0.5)" }}><div className="h-4 w-1/3 rounded bg-bathyal/10" /></div>,
+  ssr: false,
+});
+
+const TeamMetricsWidget = dynamic(() => import("@/components/dashboard/TeamMetricsWidget"), {
+  loading: () => <div className="animate-pulse rounded-2xl p-8" style={{ background: "rgba(19,26,36,0.5)" }}><div className="h-4 w-1/3 rounded bg-bathyal/10" /></div>,
+  ssr: false,
+});
+
+const ProductAnalyticsWidget = dynamic(() => import("@/components/dashboard/ProductAnalyticsWidget"), {
+  loading: () => <div className="animate-pulse rounded-2xl p-8" style={{ background: "rgba(19,26,36,0.5)" }}><div className="h-4 w-1/3 rounded bg-bathyal/10" /></div>,
+  ssr: false,
+});
+
+// -- Types ------------------------------------------------------------------
 
 interface DashboardData {
   overview: {
@@ -60,7 +73,7 @@ interface DashboardData {
   };
 }
 
-// ── Theme tokens ───────────────────────────────────────────────────────────
+// -- Theme tokens -----------------------------------------------------------
 
 const STATUS_COLORS: Record<string, { label: string; color: string; bg: string; glow: string }> = {
   OPEN:             { label: "Open", color: "var(--color-phosphor)", bg: "rgba(200, 230, 201, 0.08)", glow: "0 0 6px rgba(200, 230, 201, 0.3)" },
@@ -87,18 +100,13 @@ const ACTIVE_STATUSES = ["ASSIGNED", "IN_PROGRESS", "WAITING_CUSTOMER", "REOPENE
 // ═══════════════════════════════════════════════════════════════════════════
 
 function ParticleField() {
-  const [particles, setParticles] = useState<Array<{
-    id: number; x: string; y: string; size: number;
-    delay: number; duration: number; dx: string;
-  }>>([]);
-
-  useEffect(() => {
-    setParticles(Array.from({ length: 18 }, (_, i) => ({
+  const [particles] = useState(() =>
+    Array.from({ length: 8 }, (_, i) => ({
       id: i, x: `${Math.random() * 100}%`, y: `${Math.random() * 100}%`,
-      size: 1.2 + Math.random() * 2.5, delay: Math.random() * 10,
-      duration: 5 + Math.random() * 8, dx: `${-40 + Math.random() * 80}px`,
-    })));
-  }, []);
+      size: 1.2 + Math.random() * 2, delay: Math.random() * 8,
+      duration: 5 + Math.random() * 6, dx: `${-30 + Math.random() * 60}px`,
+    }))
+  );
 
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
@@ -325,11 +333,11 @@ function TeamWorkload({ data }: { data: DashboardData["teamWorkload"] }) {
             }}
           >
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-medium text-solvent/70">{team.teamName}</span>
-              <span className="text-[10px] text-solvent/25 font-mono">{team.memberCount} members</span>
+              <span className="text-xs font-medium text-solvent" style={{ color: "var(--color-solvent)" }}>{team.teamName}</span>
+              <span className="text-[10px] text-solvent/35 font-mono">{team.memberCount} members</span>
             </div>
             {team.leadName && (
-              <p className="mb-2 text-[10px] text-solvent/20">Lead: {team.leadName}</p>
+              <p className="mb-2 text-[10px] text-solvent/30">Lead: {team.leadName}</p>
             )}
             <div className="mb-2 flex items-center gap-3 text-xs">
               <div>
@@ -447,7 +455,7 @@ export default function DashboardPage() {
   const auth = useAuth();
   const { isAuthenticated, isLoading: authLoading, profile } = auth;
 
-  // ── Tab navigation ────────────────────────────────────────────────
+  // -- Tab navigation ------------------------------------------------
   const [activeTab, setActiveTab] = useState("overview");
 
   const tabs = [
@@ -475,7 +483,7 @@ export default function DashboardPage() {
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Fetch dashboard data ────────────────────────────────────────────────
+  // -- Fetch dashboard data ------------------------------------------------
   const fetchData = useCallback(async () => {
     setIsFetching(true);
     setError(null);
@@ -498,7 +506,7 @@ export default function DashboardPage() {
     if (!authLoading && isAuthenticated) fetchData();
   }, [authLoading, isAuthenticated, fetchData]);
 
-  // ── Auth gate ──────────────────────────────────────────────────────────
+  // -- Auth gate ----------------------------------------------------------
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/login");
   }, [authLoading, isAuthenticated, router]);
@@ -518,14 +526,14 @@ export default function DashboardPage() {
       <AppNavigation />
       <ParticleField />
 
-      {/* Ambient glow */}
-      <div className="pointer-events-none fixed top-1/4 left-1/2 h-[70vmin] w-[70vmin] -translate-x-1/2 animate-pulse-glow rounded-full"
+      {/* Ambient glow — reduced animation impact */}
+      <div className="pointer-events-none fixed top-1/4 left-1/2 h-[50vmin] w-[50vmin] -translate-x-1/2 rounded-full opacity-30"
         style={{ background: "radial-gradient(circle, rgba(200, 230, 201, 0.03) 0%, transparent 60%)" }}
         aria-hidden="true"
       />
 
       <div className="mx-auto max-w-6xl">
-        {/* ── Header ── */}
+        {/* -- Header -- */}
         <div className="mb-8 mt-4 flex items-end justify-between">
           <div>
             <h1 className="text-2xl font-medium tracking-tight text-solvent sm:text-3xl">Dashboard</h1>
@@ -548,7 +556,7 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* ── Tab Navigation ── */}
+        {/* -- Tab Navigation -- */}
         <div className="mb-8 flex gap-1 rounded-2xl p-1"
           style={{
             background: "rgba(10,14,20,0.4)",
@@ -606,7 +614,7 @@ export default function DashboardPage() {
             <button onClick={fetchData} className="btn-phosphor rounded-full px-5 py-2 text-sm">Retry</button>
           </div>
         ) : isFetching && !data ? (
-          /* ── Loading skeleton ── */
+          /* -- Loading skeleton -- */
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (

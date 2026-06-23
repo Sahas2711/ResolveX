@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, clearTokens } from "@/hooks/useAuth";
 
-// ── Nav items ──────────────────────────────────────────────────────────────
+// -- Nav items --------------------------------------------------------------
 
 interface NavItem {
   label: string;
@@ -71,7 +71,7 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-// ── App Navigation ─────────────────────────────────────────────────────────
+// -- App Navigation ---------------------------------------------------------
 
 export default function AppNavigation() {
   const pathname = usePathname();
@@ -135,7 +135,7 @@ export default function AppNavigation() {
           </div>
         </div>
 
-        {/* User info + logout */}
+        {/* Theme toggle + user info + logout */}
         <div className="flex items-center gap-3">
           {profile && (
             <span className="hidden text-xs text-solvent/30 sm:inline">

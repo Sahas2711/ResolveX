@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { getAccessToken, useAuth, checkPermissions } from "@/hooks/useAuth";
 import { Permissions } from "@/lib/permissions";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface Team {
   id: string;
@@ -32,7 +32,7 @@ interface UserSearchResult {
   employeeId: string;
 }
 
-// ── RBAC Role Badge Styling ────────────────────────────────────────────────
+// -- RBAC Role Badge Styling ------------------------------------------------
 // Maps system RBAC role names to their display label and visual theme.
 // Each role has a distinct color derived from the ResolveX palette.
 
@@ -72,23 +72,16 @@ const ROLE_BADGE_CONFIG: Record<
   },
 };
 
-// ── Particle Field ─────────────────────────────────────────────────────────
+// -- Particle Field ---------------------------------------------------------
 
 function ParticleField() {
-  const [particles, setParticles] = useState<Array<{
-    id: number; x: string; y: string; size: number;
-    delay: number; duration: number; dx: string;
-  }>>([]);
-
-  useEffect(() => {
-    setParticles(
-      Array.from({ length: 10 }, (_, i) => ({
-        id: i, x: `${Math.random() * 100}%`, y: `${Math.random() * 100}%`,
-        size: 1.2 + Math.random() * 2, delay: Math.random() * 8,
-        duration: 5 + Math.random() * 7, dx: `${-30 + Math.random() * 60}px`,
-      })),
-    );
-  }, []);
+  const [particles] = useState(() =>
+    Array.from({ length: 10 }, (_, i) => ({
+      id: i, x: `${Math.random() * 100}%`, y: `${Math.random() * 100}%`,
+      size: 1.2 + Math.random() * 2, delay: Math.random() * 8,
+      duration: 5 + Math.random() * 7, dx: `${-30 + Math.random() * 60}px`,
+    }))
+  );
 
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
@@ -108,7 +101,7 @@ function ParticleField() {
   );
 }
 
-// ── Delete Team Confirmation Modal ─────────────────────────────────────────
+// -- Delete Team Confirmation Modal -----------------------------------------
 
 function DeleteModal({
   teamName,
@@ -194,7 +187,7 @@ function DeleteModal({
   );
 }
 
-// ── Remove Member Confirmation Modal ───────────────────────────────────────
+// -- Remove Member Confirmation Modal ---------------------------------------
 
 function RemoveMemberModal({
   memberName,
@@ -279,7 +272,7 @@ function RemoveMemberModal({
   );
 }
 
-// ── Add Member Modal (with user search) ────────────────────────────────────
+// -- Add Member Modal (with user search) ------------------------------------
 
 function AddMemberModal({
   isOpen,
@@ -404,7 +397,7 @@ function AddMemberModal({
           </div>
         )}
 
-        {/* ── User Search ── */}
+        {/* -- User Search -- */}
         <div ref={searchRef} className="relative mb-4">
           {selectedUser ? (
             <div className="flex items-center gap-2 rounded-2xl px-4 py-3"
@@ -453,7 +446,7 @@ function AddMemberModal({
             </div>
           )}
 
-          {/* ── Search dropdown ── */}
+          {/* -- Search dropdown -- */}
           {showDropdown && searchResults.length > 0 && (
             <div
               className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-2xl p-1 animate-fade-in"
@@ -495,7 +488,7 @@ function AddMemberModal({
           )}
         </div>
 
-        {/* ── Role selector ── */}
+        {/* -- Role selector -- */}
         <div className="mb-6 flex items-center gap-3 sm:gap-4">
           <span className="text-[13px] font-medium tracking-wide text-solvent/40 uppercase">Role</span>
           <div className="flex gap-2">
@@ -518,7 +511,7 @@ function AddMemberModal({
           </div>
         </div>
 
-        {/* ── Buttons ── */}
+        {/* -- Buttons -- */}
         <div className="flex gap-3">
           <button
             onClick={onClose}
@@ -582,7 +575,7 @@ export default function TeamDetailPage() {
   const canUpdate = profile ? checkPermissions(auth, [Permissions.TEAM_UPDATE]).allowed : false;
   const canDelete = profile ? checkPermissions(auth, [Permissions.TEAM_DELETE]).allowed : false;
 
-  // ── Fetch team & members ─────────────────────────────────────────────────
+  // -- Fetch team & members -------------------------------------------------
   useEffect(() => {
     if (authLoading || !isAuthenticated || !teamId) return;
     (async () => {
@@ -611,7 +604,7 @@ export default function TeamDetailPage() {
     })();
   }, [teamId, authLoading, isAuthenticated]);
 
-  // ── Re-fetch members helper ──────────────────────────────────────────────
+  // -- Re-fetch members helper ----------------------------------------------
   const refreshMembers = useCallback(async () => {
     const token = getAccessToken();
     const res = await fetch(`/api/v1/teams/${teamId}/members`, {
@@ -623,7 +616,7 @@ export default function TeamDetailPage() {
     }
   }, [teamId]);
 
-  // ── Delete handler ───────────────────────────────────────────────────────
+  // -- Delete handler -------------------------------------------------------
   async function handleDelete() {
     if (!team) return;
     setIsDeleting(true);
@@ -648,7 +641,7 @@ export default function TeamDetailPage() {
     }
   }
 
-  // ── Add member handler ───────────────────────────────────────────────────
+  // -- Add member handler ---------------------------------------------------
   async function handleAddMember(userId: string, role: "lead" | "member") {
     setIsAddingMember(true);
     setAddMemberError(null);
@@ -684,7 +677,7 @@ export default function TeamDetailPage() {
     }
   }
 
-  // ── Remove member handler ────────────────────────────────────────────────
+  // -- Remove member handler ------------------------------------------------
   async function handleRemoveMember() {
     if (!memberToRemove) return;
     setIsRemovingMember(true);
@@ -706,7 +699,7 @@ export default function TeamDetailPage() {
     }
   }
 
-  // ── Auth gate ────────────────────────────────────────────────────────────
+  // -- Auth gate ------------------------------------------------------------
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/login");
   }, [authLoading, isAuthenticated, router]);
@@ -726,7 +719,7 @@ export default function TeamDetailPage() {
       />
 
       <div className="mx-auto max-w-2xl">
-        {/* ── Back link ── */}
+        {/* -- Back link -- */}
         <button
           onClick={() => router.push("/teams")}
           className="mb-6 flex items-center gap-2 text-sm text-solvent/30 transition-colors hover:text-phosphor"
@@ -737,7 +730,7 @@ export default function TeamDetailPage() {
           Back to teams
         </button>
 
-        {/* ── Loading ── */}
+        {/* -- Loading -- */}
         {isFetching ? (
           <div className="animate-pulse space-y-4 rounded-[2rem] p-8" style={{ background: "linear-gradient(135deg, rgba(19, 26, 36, 0.6), rgba(26, 31, 40, 0.5))", border: "1px solid rgba(46, 74, 74, 0.06)" }}>
             <div className="h-5 w-2/5 rounded bg-bathyal/20" />
@@ -745,7 +738,7 @@ export default function TeamDetailPage() {
             <div className="h-3 w-1/3 rounded bg-bathyal/10" />
           </div>
         ) : error ? (
-          /* ── Error state ── */
+          /* -- Error state -- */
           <div className="flex flex-col items-center gap-6 py-16 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full"
               style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)" }}
@@ -760,7 +753,7 @@ export default function TeamDetailPage() {
           </div>
         ) : team ? (
           <>
-            {/* ── Team detail halo ── */}
+            {/* -- Team detail halo -- */}
             <div className="animate-fade-in rounded-[2.5rem] p-6 sm:p-10"
               style={{
                 background: "linear-gradient(135deg, rgba(19, 26, 36, 0.75), rgba(26, 31, 40, 0.65))",
@@ -773,7 +766,7 @@ export default function TeamDetailPage() {
                 aria-hidden="true"
               />
 
-              {/* ── Header ── */}
+              {/* -- Header -- */}
               <div className="mb-8 flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-3">
@@ -815,7 +808,7 @@ export default function TeamDetailPage() {
                 </div>
               </div>
 
-              {/* ── Description ── */}
+              {/* -- Description -- */}
               <div className="mb-8">
                 <h2 className="mb-2 text-xs font-medium tracking-wider text-solvent/25 uppercase">Description</h2>
                 {team.description ? (
@@ -827,14 +820,14 @@ export default function TeamDetailPage() {
                 )}
               </div>
 
-              {/* ── Team ID ── */}
+              {/* -- Team ID -- */}
               <div className="rounded-2xl p-4" style={{ background: "rgba(10, 14, 20, 0.4)", border: "1px solid rgba(46, 74, 74, 0.04)" }}>
                 <span className="text-[11px] font-medium tracking-wider text-solvent/20 uppercase">Team ID</span>
                 <p className="mt-1 font-mono text-xs text-solvent/35">{team.id}</p>
               </div>
             </div>
 
-            {/* ── Members Section ── */}
+            {/* -- Members Section -- */}
             <div className="mt-8 animate-fade-in rounded-[2.5rem] p-6 sm:p-8"
               style={{
                 background: "linear-gradient(135deg, rgba(19, 26, 36, 0.6), rgba(26, 31, 40, 0.5))",
@@ -904,7 +897,7 @@ export default function TeamDetailPage() {
                                 Lead
                               </span>
                             )}
-                            {/* ── System RBAC role badges ── */}
+                            {/* -- System RBAC role badges -- */}
                             {member.roles.map((roleName) => {
                               const badge = ROLE_BADGE_CONFIG[roleName];
                               if (!badge) return null;
@@ -952,7 +945,7 @@ export default function TeamDetailPage() {
         ) : null}
       </div>
 
-      {/* ── Delete Team Modal ── */}
+      {/* -- Delete Team Modal -- */}
       {showDeleteModal && team && (
         <DeleteModal
           teamName={team.name}
@@ -963,7 +956,7 @@ export default function TeamDetailPage() {
         />
       )}
 
-      {/* ── Remove Member Modal ── */}
+      {/* -- Remove Member Modal -- */}
       {memberToRemove && (
         <RemoveMemberModal
           memberName={memberToRemove.userName}
@@ -974,7 +967,7 @@ export default function TeamDetailPage() {
         />
       )}
 
-      {/* ── Add Member Modal ── */}
+      {/* -- Add Member Modal -- */}
       <AddMemberModal
         isOpen={showAddMember}
         isSubmitting={isAddingMember}

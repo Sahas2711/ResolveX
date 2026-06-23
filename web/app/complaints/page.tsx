@@ -6,7 +6,7 @@ import { getAccessToken, useAuth, checkPermissions } from "@/hooks/useAuth";
 import { Permissions } from "@/lib/permissions";
 import AppNavigation from "@/components/AppNavigation";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface ComplaintItem {
   id: string;
@@ -39,7 +39,7 @@ interface PaginationMeta {
   totalPages: number;
 }
 
-// ── Status config ──────────────────────────────────────────────────────────
+// -- Status config ----------------------------------------------------------
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
   open: {
@@ -99,23 +99,16 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
   critical: { label: "Crit", color: "var(--color-magma)" },
 };
 
-// ── Particle Field ─────────────────────────────────────────────────────────
+// -- Particle Field ---------------------------------------------------------
 
 function ParticleField() {
-  const [particles, setParticles] = useState<Array<{
-    id: number; x: string; y: string; size: number;
-    delay: number; duration: number; dx: string;
-  }>>([]);
-
-  useEffect(() => {
-    setParticles(
-      Array.from({ length: 14 }, (_, i) => ({
-        id: i, x: `${Math.random() * 100}%`, y: `${Math.random() * 100}%`,
-        size: 1.2 + Math.random() * 2, delay: Math.random() * 8,
-        duration: 5 + Math.random() * 7, dx: `${-30 + Math.random() * 60}px`,
-      })),
-    );
-  }, []);
+  const [particles] = useState(() =>
+    Array.from({ length: 14 }, (_, i) => ({
+      id: i, x: `${Math.random() * 100}%`, y: `${Math.random() * 100}%`,
+      size: 1.2 + Math.random() * 2, delay: Math.random() * 8,
+      duration: 5 + Math.random() * 7, dx: `${-30 + Math.random() * 60}px`,
+    }))
+  );
 
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
@@ -135,7 +128,7 @@ function ParticleField() {
   );
 }
 
-// ── Status Badge ───────────────────────────────────────────────────────────
+// -- Status Badge -----------------------------------------------------------
 
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.open;
@@ -151,7 +144,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// ── Priority Badge ─────────────────────────────────────────────────────────
+// -- Priority Badge ---------------------------------------------------------
 
 function PriorityBadge({ priority }: { priority: string }) {
   const cfg = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.low;
@@ -162,7 +155,7 @@ function PriorityBadge({ priority }: { priority: string }) {
   );
 }
 
-// ── Search Bar ─────────────────────────────────────────────────────────────
+// -- Search Bar -------------------------------------------------------------
 
 function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
@@ -181,7 +174,7 @@ function SearchBar({ value, onChange }: { value: string; onChange: (v: string) =
   );
 }
 
-// ── Empty State ────────────────────────────────────────────────────────────
+// -- Empty State ------------------------------------------------------------
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
@@ -208,7 +201,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
   );
 }
 
-// ── Loading Skeleton ───────────────────────────────────────────────────────
+// -- Loading Skeleton -------------------------------------------------------
 
 function ComplaintSkeleton() {
   return (
@@ -247,7 +240,7 @@ export default function ComplaintsPage() {
   const canCreate = profile ? checkPermissions(auth, [Permissions.COMPLAINT_CREATE]).allowed : false;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Fetch complaints ─────────────────────────────────────────────────────
+  // -- Fetch complaints -----------------------------------------------------
   const fetchComplaints = useCallback(async (p: number, q: string, s: string) => {
     setIsFetching(true);
     try {
@@ -276,7 +269,7 @@ export default function ComplaintsPage() {
     }
   }, []);
 
-  // ── Debounced search ─────────────────────────────────────────────────────
+  // -- Debounced search -----------------------------------------------------
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -284,7 +277,7 @@ export default function ComplaintsPage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [page, search, statusFilter, authLoading, isAuthenticated, fetchComplaints]);
 
-  // ── Auth gate ────────────────────────────────────────────────────────────
+  // -- Auth gate ------------------------------------------------------------
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/login");
   }, [authLoading, isAuthenticated, router]);
@@ -305,7 +298,7 @@ export default function ComplaintsPage() {
         aria-hidden="true"
       />
 
-      {/* ── Header ── */}
+      {/* -- Header -- */}
       <div className="mx-auto mb-8 mt-6 flex max-w-4xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-medium tracking-tight text-solvent sm:text-3xl">Complaints</h1>
@@ -325,7 +318,7 @@ export default function ComplaintsPage() {
         )}
       </div>
 
-      {/* ── Filters ── */}
+      {/* -- Filters -- */}
       <div className="mx-auto mb-6 flex max-w-4xl flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex-1">
           <SearchBar value={search} onChange={(v) => { setSearch(v); setPage(1); }} />
@@ -346,7 +339,7 @@ export default function ComplaintsPage() {
         </div>
       </div>
 
-      {/* ── Complaint list ── */}
+      {/* -- Complaint list -- */}
       <div className="mx-auto max-w-4xl">
         {isFetching ? (
           <ComplaintSkeleton />
@@ -425,7 +418,7 @@ export default function ComplaintsPage() {
           </div>
         )}
 
-        {/* ── Pagination ── */}
+        {/* -- Pagination -- */}
         {meta && meta.totalPages > 1 && (
           <div className="mt-8 flex items-center justify-center gap-3">
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}

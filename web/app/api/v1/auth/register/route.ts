@@ -27,7 +27,7 @@ import {
  */
 export async function POST(request: Request) {
   try {
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = registerSchema.safeParse(body);
 
@@ -42,13 +42,13 @@ export async function POST(request: Request) {
 
     const { email, password, name } = parsed.data;
 
-    // ── Split name into firstName / lastName ─────────────────────────
+    // -- Split name into firstName / lastName -------------------------
     const nameParts = name.trim().split(/\s+/);
     const firstName = nameParts[0]!;
     // If only a single name was provided, lastName is set to empty string
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
 
-    // ── Check for duplicate email ────────────────────────────────────
+    // -- Check for duplicate email ------------------------------------
     const existingUser = await prisma.user.findUnique({
       where: { email },
       select: { id: true },
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       return conflictResponse("A user with this email address already exists");
     }
 
-    // ── Verify CUSTOMER role exists ──────────────────────────────────
+    // -- Verify CUSTOMER role exists ----------------------------------
     const customerRole = await prisma.role.findUnique({
       where: { name: "CUSTOMER" },
       select: { id: true },
@@ -71,13 +71,13 @@ export async function POST(request: Request) {
       return internalErrorResponse("Registration is temporarily unavailable");
     }
 
-    // ── Generate a unique employeeId ─────────────────────────────────
+    // -- Generate a unique employeeId ---------------------------------
     const employeeId = `EMP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-    // ── Hash password ────────────────────────────────────────────────
+    // -- Hash password ------------------------------------------------
     const passwordHash = await hashPassword(password);
 
-    // ── Create user, assign role & persist refresh token (atomic) ──
+    // -- Create user, assign role & persist refresh token (atomic) --
     let refreshTokenValue = "";
 
     const user = await prisma.$transaction(async (tx: { user: { create: (args: any) => Promise<any> }; userRole: { create: (args: any) => Promise<any> }; refreshToken: { create: (args: any) => Promise<any> } }) => {
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
       return newUser;
     });
 
-    // ── Generate access token ────────────────────────────────────────
+    // -- Generate access token ----------------------------------------
     const jwtPayload: JwtUserPayload = {
       sub: user.id,
       email: user.email,
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     };
     const accessToken = await generateAccessToken(jwtPayload);
 
-    // ── Return response ──────────────────────────────────────────────
+    // -- Return response ----------------------------------------------
     return createdResponse({
       userId: user.id,
       email: user.email,

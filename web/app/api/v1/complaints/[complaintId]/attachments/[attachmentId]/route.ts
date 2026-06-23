@@ -40,17 +40,17 @@ export async function DELETE(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_ATTACHMENT);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract params ───────────────────────────────────────────────
+    // -- Extract params -----------------------------------------------
     const { complaintId, attachmentId } = await params;
     ctx.complaintId = complaintId;
     ctx.attachmentId = attachmentId;
 
-    // ── Verify attachment exists ─────────────────────────────────────
+    // -- Verify attachment exists -------------------------------------
     const existing = await prisma.attachment.findFirst({
       where: { id: attachmentId, complaintId },
       select: {
@@ -69,7 +69,7 @@ export async function DELETE(
       return notFoundResponse("Attachment not found");
     }
 
-    // ── Ownership or team-lead check ─────────────────────────────────
+    // -- Ownership or team-lead check ---------------------------------
     const isOwner = existing.uploadedBy === auth.user.userId;
 
     if (!isOwner) {
@@ -92,7 +92,7 @@ export async function DELETE(
       }
     }
 
-    // ── Delete from Cloudinary using stored public ID ────────────────
+    // -- Delete from Cloudinary using stored public ID ----------------
     if (existing.storagePublicId) {
       try {
         await deleteFromCloudinary(existing.storagePublicId);
@@ -102,7 +102,7 @@ export async function DELETE(
       }
     }
 
-    // ── Delete from database ─────────────────────────────────────────
+    // -- Delete from database -----------------------------------------
     await prisma.attachment.delete({
       where: { id: attachmentId },
     });

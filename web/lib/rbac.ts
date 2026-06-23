@@ -9,7 +9,7 @@ import { forbiddenResponse, internalErrorResponse } from "@/lib/response";
 import { logger } from "@/lib/logger";
 import type { PermissionKey } from "@/lib/permissions";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 export interface AuthUser {
   userId: string;
@@ -21,7 +21,7 @@ export type AuthResult =
   | { user: AuthUser; allowed: true; response: null }
   | { user: AuthUser; allowed: false; response: Response };
 
-// ── Extract user from proxy-set headers ────────────────────────────────────
+// -- Extract user from proxy-set headers ------------------------------------
 
 /**
  * Extracts the authenticated user from request headers set by the proxy.
@@ -44,7 +44,7 @@ export function getUserFromRequest(request: Request): AuthUser | null {
   }
 }
 
-// ── Database permission lookups ────────────────────────────────────────────
+// -- Database permission lookups --------------------------------------------
 
 /**
  * Fetches all permission keys assigned to a user through their roles.
@@ -96,7 +96,7 @@ export async function getUserRoles(userId: string): Promise<string[]> {
   return userRoles.map((ur: { role: { name: string } }) => ur.role.name).sort();
 }
 
-// ── Authorization checks ───────────────────────────────────────────────────
+// -- Authorization checks ---------------------------------------------------
 
 /**
  * Checks that the authenticated user (from the proxy-set headers) has ALL

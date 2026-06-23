@@ -20,7 +20,7 @@ import {
 } from "@/lib/validators/complaint";
 import { z } from "zod";
 
-// ── Validation Schema ──────────────────────────────────────────────────────
+// -- Validation Schema ------------------------------------------------------
 
 const assignSchema = z.object({
   teamId: z.string().uuid("Invalid team ID format"),
@@ -56,16 +56,16 @@ export async function POST(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_REASSIGN);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract complaintId ──────────────────────────────────────────
+    // -- Extract complaintId ------------------------------------------
     const { complaintId } = await params;
     ctx.complaintId = complaintId;
 
-    // ── Verify complaint exists ──────────────────────────────────────
+    // -- Verify complaint exists --------------------------------------
     const complaint = await prisma.complaint.findFirst({
       where: { id: complaintId, deletedAt: null },
       select: {
@@ -81,7 +81,7 @@ export async function POST(
       return notFoundResponse("Complaint not found");
     }
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = assignSchema.safeParse(body);
 
@@ -98,7 +98,7 @@ export async function POST(
     ctx.targetTeamId = teamId;
     ctx.targetStaffId = staffId;
 
-    // ── Verify team exists ───────────────────────────────────────────
+    // -- Verify team exists -------------------------------------------
     const team = await prisma.team.findFirst({
       where: { id: teamId, deletedAt: null },
       select: { id: true, teamName: true },
@@ -108,7 +108,7 @@ export async function POST(
       return notFoundResponse("Team not found");
     }
 
-    // ── Verify staff exists and is active ────────────────────────────
+    // -- Verify staff exists and is active ----------------------------
     const staff = await prisma.user.findFirst({
       where: {
         id: staffId,
@@ -127,7 +127,7 @@ export async function POST(
       return notFoundResponse("Staff member not found or is inactive");
     }
 
-    // ── Verify staff belongs to the target team ──────────────────────
+    // -- Verify staff belongs to the target team ----------------------
     const membership = await prisma.teamMember.findUnique({
       where: { teamId_userId: { teamId, userId: staffId } },
     });
@@ -138,7 +138,7 @@ export async function POST(
       );
     }
 
-    // ── Perform reassignment in transaction ───────────────────────────
+    // -- Perform reassignment in transaction ---------------------------
     const updatedComplaint = await prisma.$transaction(async (tx: any) => {
       // 1. Update the complaint's assigned team and agent
       const updated = await tx.complaint.update({
@@ -181,7 +181,7 @@ export async function POST(
       return updated;
     });
 
-    // ── Notify the newly assigned agent (fire-and-forget) ─────────────
+    // -- Notify the newly assigned agent (fire-and-forget) -------------
     try {
       await prisma.notification.create({
         data: {

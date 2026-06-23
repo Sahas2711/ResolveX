@@ -4,7 +4,7 @@
 // Mirrors the seed data in prisma/seed.ts
 // =============================================================================
 
-// ── Permissions ────────────────────────────────────────────────────────────
+// -- Permissions ------------------------------------------------------------
 
 export const Permissions = {
   // Complaints
@@ -63,7 +63,7 @@ export const Permissions = {
 
 export type PermissionKey = (typeof Permissions)[keyof typeof Permissions];
 
-// ── Roles ──────────────────────────────────────────────────────────────────
+// -- Roles ------------------------------------------------------------------
 
 export const Roles = {
   CUSTOMER: "CUSTOMER",
@@ -75,7 +75,7 @@ export const Roles = {
 
 export type RoleName = (typeof Roles)[keyof typeof Roles];
 
-// ── Role → Permissions mapping (mirrors seed.ts) ──────────────────────────
+// -- Role → Permissions mapping (mirrors seed.ts) --------------------------
 
 export const ROLE_PERMISSIONS: Record<RoleName, PermissionKey[]> = {
   [Roles.CUSTOMER]: [

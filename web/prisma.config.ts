@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import { defineConfig } from "prisma/config";
 
-// ── Auto-load .env file ────────────────────────────────────────────────────
+// -- Auto-load .env file ----------------------------------------------------
 // Prisma v7 does not automatically load .env when using prisma.config.ts.
 // This helper reads the .env file from the project root so that DATABASE_URL
 // and other variables are available to both the config and the seed script.

@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const ctx = { ip };
 
   try {
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = refreshTokenSchema.safeParse(body);
 
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
     const { refreshToken: rawToken } = parsed.data;
 
-    // ── 1. Verify JWT signature ─────────────────────────────────────
+    // -- 1. Verify JWT signature -------------------------------------
     let tokenPayload: { sub: string };
     try {
       tokenPayload = await verifyRefreshToken(rawToken);
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
     const userId = tokenPayload.sub;
 
-    // ── 2. Hash token & find in DB ──────────────────────────────────
+    // -- 2. Hash token & find in DB ----------------------------------
     const tokenHash = hashToken(rawToken);
 
     const storedToken = await prisma.refreshToken.findFirst({
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     }
 
     if (storedToken.revoked) {
-      // ── Token reuse detected! Revoke ALL tokens for this user ─────
+      // -- Token reuse detected! Revoke ALL tokens for this user -----
       // If a revoked token is presented, it likely means the token was
       // stolen. As a security measure, revoke every refresh token for
       // this user to force re-authentication.
@@ -106,13 +106,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── Check expiry ────────────────────────────────────────────────
+    // -- Check expiry ------------------------------------------------
     if (storedToken.expiresAt < new Date()) {
       logger.warn("Refresh failed: token expired", { ...ctx, userId });
       return unauthorizedResponse("Refresh token has expired. Please log in again.");
     }
 
-    // ── 3. Fetch user with roles ────────────────────────────────────
+    // -- 3. Fetch user with roles ------------------------------------
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
       return unauthorizedResponse("Account is inactive. Please contact support.");
     }
 
-    // ── 4. Revoke old token & issue new ones (atomic) ───────────────
+    // -- 4. Revoke old token & issue new ones (atomic) ---------------
     const roleIds = user.userRoles.map((ur: { role: { id: string } }) => ur.role.id);
 
     const jwtPayload: JwtUserPayload = {
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
       email: user.email,
     });
 
-    // ── 5. Return response ──────────────────────────────────────────
+    // -- 5. Return response ------------------------------------------
     return successResponse({
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,

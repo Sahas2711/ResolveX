@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import crypto from "node:crypto";
 
-// ── Constants ──────────────────────────────────────────────────────────────
+// -- Constants --------------------------------------------------------------
 
 const BCRYPT_COST = 12;
 const ACCESS_TOKEN_EXPIRY = "15m";
@@ -24,7 +24,7 @@ function getRefreshSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-// ── Token hashing (for storage / verification) ─────────────────────────────
+// -- Token hashing (for storage / verification) -----------------------------
 
 /**
  * Hash a token value for secure storage in the database.
@@ -34,7 +34,7 @@ export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-// ── Password Hashing ───────────────────────────────────────────────────────
+// -- Password Hashing -------------------------------------------------------
 
 export interface JwtUserPayload extends JWTPayload {
   sub: string;
@@ -53,7 +53,7 @@ export async function verifyPassword(
   return bcrypt.compare(password, hash);
 }
 
-// ── JWT Tokens ─────────────────────────────────────────────────────────────
+// -- JWT Tokens -------------------------------------------------------------
 
 export async function generateAccessToken(payload: JwtUserPayload): Promise<string> {
   return new SignJWT(payload)

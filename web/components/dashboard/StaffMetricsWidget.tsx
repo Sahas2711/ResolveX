@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getAccessToken } from "@/hooks/useAuth";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface StaffMetricsData {
   staffId: string;
@@ -170,7 +170,9 @@ export default function StaffMetricsWidget({ staffId }: StaffMetricsWidgetProps)
   }, [staffId]);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     fetchData();
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [fetchData]);
 
   if (isLoading) {

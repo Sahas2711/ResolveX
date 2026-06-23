@@ -22,7 +22,7 @@ import {
   internalErrorResponse,
 } from "@/lib/response";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface FrequentIssue {
   issue: string;
@@ -76,16 +76,16 @@ export async function GET(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.DASHBOARD_PRODUCT);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract productId ────────────────────────────────────────────
+    // -- Extract productId --------------------------------------------
     const { productId } = await params;
     ctx.productId = productId;
 
-    // ── Verify product exists and is not deleted ─────────────────────
+    // -- Verify product exists and is not deleted ---------------------
     const product = await prisma.product.findFirst({
       where: { id: productId, deletedAt: null },
       select: { id: true, productName: true },
@@ -95,7 +95,7 @@ export async function GET(
       return notFoundResponse("Product not found");
     }
 
-    // ── Parse optional date range ────────────────────────────────────
+    // -- Parse optional date range ------------------------------------
     const url = new URL(request.url);
     const dateFrom = url.searchParams.get("dateFrom");
     const dateTo = url.searchParams.get("dateTo");
@@ -111,7 +111,7 @@ export async function GET(
     ctx.dateFrom = dateFrom ?? "none";
     ctx.dateTo = dateTo ?? "none";
 
-    // ── Run all queries in parallel ──────────────────────────────────
+    // -- Run all queries in parallel ----------------------------------
     const [
       totalCount,
       categoryData,
@@ -166,7 +166,7 @@ export async function GET(
       }),
     ]);
 
-    // ── Build category name map ──────────────────────────────────────
+    // -- Build category name map --------------------------------------
     const categoryIds = categoryData.map((c) => c.categoryId).filter(Boolean) as string[];
     const categories = categoryIds.length > 0
       ? await prisma.complaintCategory.findMany({
@@ -183,19 +183,19 @@ export async function GET(
       categoryBreakdown[name] = c._count.id;
     }
 
-    // ── Build frequent issues ────────────────────────────────────────
+    // -- Build frequent issues ----------------------------------------
     const frequentIssues: FrequentIssue[] = titleGroups.map((t) => ({
       issue: t.title,
       count: t._count.id,
     }));
 
-    // ── Compute SLA violation rate ───────────────────────────────────
+    // -- Compute SLA violation rate -----------------------------------
     const slaViolationRate =
       totalCount > 0
         ? Math.round((slaBreachCount / totalCount) * 100)
         : null;
 
-    // ── Build monthly resolution trend ──────────────────────────────
+    // -- Build monthly resolution trend ------------------------------
     // Group resolved complaints by year-month
     const trendMap = new Map<string, number>();
     for (const c of monthlyTrend) {

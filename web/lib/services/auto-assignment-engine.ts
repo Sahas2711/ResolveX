@@ -15,7 +15,7 @@ import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { Roles } from "@/lib/permissions";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 export interface AutoAssignResult {
   assignedTeamId: string | null;
@@ -39,7 +39,7 @@ interface AgentCandidate {
   resolutionRate: number;
 }
 
-// ── Active statuses that count toward agent load ───────────────────────────
+// -- Active statuses that count toward agent load ---------------------------
 // Only complaints in these statuses represent ongoing work.
 // OPEN = not yet assigned (system-level). RESOLVED/CLOSED = done.
 // WAITING_CUSTOMER = blocked on customer, still counts toward load.
@@ -51,7 +51,7 @@ const ACTIVE_STATUSES = [
   "REOPENED",
 ] as const;
 
-// ── Staff role names (eligible for assignment) ─────────────────────────────
+// -- Staff role names (eligible for assignment) -----------------------------
 // Users with these system roles are considered assignable agents.
 
 const STAFF_ROLES = [Roles.SUPPORT_AGENT, Roles.TEAM_LEAD];
@@ -77,7 +77,7 @@ export async function resolveBestAssignment(
   const ctx: Record<string, unknown> = { productId, priority };
   logger.info("Auto-assignment: starting resolution", ctx);
 
-  // ── Step 1: Resolve the target team ────────────────────────────────────
+  // -- Step 1: Resolve the target team ------------------------------------
   const { assignedTeamId, teamSource } = await resolveTeam(productId, priority, categoryId);
   ctx.teamId = assignedTeamId;
   ctx.teamSource = teamSource;
@@ -92,7 +92,7 @@ export async function resolveBestAssignment(
     };
   }
 
-  // ── Step 2: Find the best agent in this team ───────────────────────────
+  // -- Step 2: Find the best agent in this team ---------------------------
   const agentResult = await selectBestAgent(assignedTeamId, productId);
 
   if (!agentResult) {
@@ -105,7 +105,7 @@ export async function resolveBestAssignment(
     };
   }
 
-  // ── Step 3: Return the full result ─────────────────────────────────────
+  // -- Step 3: Return the full result -------------------------------------
   logger.info("Auto-assignment: resolved", {
     ...ctx,
     agentId: agentResult.userId,
@@ -141,7 +141,7 @@ async function resolveTeam(
   priority: string,
   categoryId?: string,
 ): Promise<TeamResolution> {
-  // ── Tier 1: Exact AssignmentRule match ─────────────────────────────────
+  // -- Tier 1: Exact AssignmentRule match ---------------------------------
   const categoryFilter = categoryId
     ? [{ categoryId }, { categoryId: null }]
     : [{ categoryId: null }];
@@ -161,7 +161,7 @@ async function resolveTeam(
     return { assignedTeamId: assignmentRule.teamId, teamSource: "AssignmentRule" };
   }
 
-  // ── Tier 2: Primary team mapping ───────────────────────────────────────
+  // -- Tier 2: Primary team mapping ---------------------------------------
   const primaryMapping = await prisma.productTeamMapping.findFirst({
     where: { productId, isPrimary: true },
     select: { teamId: true },
@@ -172,7 +172,7 @@ async function resolveTeam(
     return { assignedTeamId: primaryMapping.teamId, teamSource: "PrimaryMapping" };
   }
 
-  // ── Tier 3: Any team mapping (fallback) ────────────────────────────────
+  // -- Tier 3: Any team mapping (fallback) --------------------------------
   const anyMapping = await prisma.productTeamMapping.findFirst({
     where: { productId },
     select: { teamId: true },
@@ -212,7 +212,7 @@ async function selectBestAgent(
   teamId: string,
   productId: string,
 ): Promise<SelectedAgent | null> {
-  // ── Step 1: Find eligible team members ─────────────────────────────────
+  // -- Step 1: Find eligible team members ---------------------------------
   const teamMembers = await prisma.teamMember.findMany({
     where: { teamId },
     select: {
@@ -244,16 +244,16 @@ async function selectBestAgent(
 
   const agentIds = eligibleMembers.map((m) => m.userId);
 
-  // ── Step 2: Calculate active loads for all agents ──────────────────────
+  // -- Step 2: Calculate active loads for all agents ----------------------
   const activeLoads = await calculateActiveLoads(agentIds);
 
-  // ── Step 3: Get product-specific load weight for team members ─────────
+  // -- Step 3: Get product-specific load weight for team members ---------
   const loadWeights = await getMemberLoadWeights(teamId, productId, agentIds);
 
-  // ── Step 4: Calculate resolution rates ─────────────────────────────────
+  // -- Step 4: Calculate resolution rates ---------------------------------
   const resolutionRates = await calculateResolutionRates(agentIds);
 
-  // ── Step 5: Score and rank agents ─────────────────────────────────────
+  // -- Step 5: Score and rank agents -------------------------------------
   const candidates: AgentCandidate[] = agentIds.map((userId) => {
     const member = eligibleMembers.find((m) => m.userId === userId)!;
     const load = activeLoads.get(userId) ?? 0;

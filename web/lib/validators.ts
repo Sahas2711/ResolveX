@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// ── Auth Schemas ───────────────────────────────────────────────────────────
+// -- Auth Schemas -----------------------------------------------------------
 
 export const registerSchema = z.object({
   email: z

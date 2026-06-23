@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-// ── API Enum Mappings ──────────────────────────────────────────────────────
+// -- API Enum Mappings ------------------------------------------------------
 // API spec uses lowercase enums; Prisma uses UPPERCASE enums.
 // Severity mapping is slightly different: API has [minor, major, critical]
 // while Prisma has [LOW, MEDIUM, HIGH, SEVERE].
@@ -22,7 +22,7 @@ export const ApiComplaintStatus = z.enum([
 ]);
 export type ApiComplaintStatus = z.infer<typeof ApiComplaintStatus>;
 
-// ── Mapping functions ─────────────────────────────────────────────────────
+// -- Mapping functions -----------------------------------------------------
 
 export function mapApiPriorityToPrisma(
   priority: ApiPriority,
@@ -87,7 +87,23 @@ export function mapPrismaStatusToApi(
   return map[status] ?? "open";
 }
 
-// ── Create Complaint Schema ────────────────────────────────────────────────
+// -- List Complaints Query Schema --------------------------------------------
+// API spec: GET /complaints { page?, pageSize?, search?, status? }
+
+export const listComplaintsSchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
+  search: z.string().optional(),
+  status: z
+    .enum(["all", "open", "assigned", "in_progress", "waiting_for_customer", "resolved", "reopened", "closed", "escalated"])
+    .optional()
+    .default("all"),
+  sort: z.string().optional().default("-createdAt"),
+});
+
+export type ListComplaintsInput = z.infer<typeof listComplaintsSchema>;
+
+// -- Create Complaint Schema ------------------------------------------------
 // API spec: POST /complaints
 // { productId: uuid, category: string, priority: enum, severity: enum, description: string }
 
@@ -109,7 +125,7 @@ export const createComplaintSchema = z.object({
 
 export type CreateComplaintInput = z.infer<typeof createComplaintSchema>;
 
-// ── Update Complaint Schema ────────────────────────────────────────────────
+// -- Update Complaint Schema ------------------------------------------------
 // API spec: PUT /complaints/{complaintId}
 // { priority?, severity?, description?, category? } — all optional
 
@@ -132,7 +148,7 @@ export const updateComplaintSchema = z.object({
 
 export type UpdateComplaintInput = z.infer<typeof updateComplaintSchema>;
 
-// ── Complaint Response Shape (matches API spec Complaint schema) ───────────
+// -- Complaint Response Shape (matches API spec Complaint schema) -----------
 
 export interface ComplaintResponse {
   id: string;
@@ -154,7 +170,7 @@ export interface ComplaintResponse {
   closedAt: string | null;
 }
 
-// ── Prisma Select Shape ────────────────────────────────────────────────────
+// -- Prisma Select Shape ----------------------------------------------------
 
 export interface ComplaintSelectShape {
   id: string;
@@ -186,7 +202,7 @@ export interface ComplaintSelectShape {
   } | null;
 }
 
-// ── Helper: Map a Prisma Complaint row to API response shape ───────────────
+// -- Helper: Map a Prisma Complaint row to API response shape ---------------
 
 export function toComplaintResponse(
   complaint: ComplaintSelectShape,
@@ -222,7 +238,7 @@ export function toComplaintResponse(
   };
 }
 
-// ── Prisma select for reusability ──────────────────────────────────────────
+// -- Prisma select for reusability ------------------------------------------
 
 export const complaintSelect = {
   id: true,

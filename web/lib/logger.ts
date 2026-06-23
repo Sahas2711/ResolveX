@@ -13,7 +13,7 @@
 //   - Prod: JSON Lines for log aggregation (CloudWatch, Datadog, ELK)
 // =============================================================================
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -71,7 +71,7 @@ export interface Logger {
   child(defaultContext: LogContext): Logger;
 }
 
-// ── Constants ──────────────────────────────────────────────────────────────
+// -- Constants --------------------------------------------------------------
 
 const LOG_LEVEL_RANK: Record<LogLevel, number> = {
   debug: 0,
@@ -89,12 +89,12 @@ const DEFAULT_SAMPLING: SamplingConfig = {
   error: 1.0,
 };
 
-// ── Internal State ─────────────────────────────────────────────────────────
+// -- Internal State ---------------------------------------------------------
 
 let buffer: LogEntry[] = [];
 let flushScheduled = false;
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// -- Helpers ----------------------------------------------------------------
 
 function shouldLog(level: LogLevel, configuredLevel: number, sampling: SamplingConfig): boolean {
   if (LOG_LEVEL_RANK[level] < configuredLevel) return false;
@@ -134,7 +134,7 @@ function createEntry(
   };
 }
 
-// ── Async Buffer ───────────────────────────────────────────────────────────
+// -- Async Buffer -----------------------------------------------------------
 
 function scheduleFlush(): void {
   if (flushScheduled) return;
@@ -170,7 +170,7 @@ function enqueue(entry: LogEntry): void {
   }
 }
 
-// ── Sync Writer ────────────────────────────────────────────────────────────
+// -- Sync Writer ------------------------------------------------------------
 
 function writeEntrySync(entry: LogEntry): void {
   if (IS_PROD) {
@@ -205,7 +205,7 @@ function writeEntrySync(entry: LogEntry): void {
   }
 }
 
-// ── Logger Factory ─────────────────────────────────────────────────────────
+// -- Logger Factory ---------------------------------------------------------
 
 function createLogger(options?: LoggerOptions): Logger {
   const configuredLevel = options?.level ?? (IS_PROD ? "info" : "debug");
@@ -270,12 +270,12 @@ function createLogger(options?: LoggerOptions): Logger {
   };
 }
 
-// ── Singleton ──────────────────────────────────────────────────────────────
+// -- Singleton --------------------------------------------------------------
 
 /** Root application logger. */
 export const logger: Logger = createLogger();
 
-// ── Request Correlation ────────────────────────────────────────────────────
+// -- Request Correlation ----------------------------------------------------
 
 /**
  * Generates a unique request correlation ID.
@@ -325,7 +325,7 @@ export function getClientIp(request: Request): string {
   return "unknown";
 }
 
-// ── Duration Tracking ──────────────────────────────────────────────────────
+// -- Duration Tracking ------------------------------------------------------
 
 /**
  * Wraps an async operation with duration logging.

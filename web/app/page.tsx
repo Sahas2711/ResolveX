@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -10,27 +10,20 @@ import { useAuth } from "@/hooks/useAuth";
 // A living membrane between an organization and its customers.
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ── Particle Field ──────────────────────────────────────────────────────────
+// -- Particle Field ----------------------------------------------------------
 
 function ParticleField({ density = 24 }: { density?: number }) {
-  const [particles, setParticles] = useState<Array<{
-    id: number; x: string; y: string; size: number;
-    delay: number; duration: number; dx: string;
-  }>>([]);
-
-  useEffect(() => {
-    setParticles(
-      Array.from({ length: density }, (_, i) => ({
-        id: i,
-        x: `${Math.random() * 100}%`,
-        y: `${Math.random() * 100}%`,
-        size: 1.2 + Math.random() * 2.8,
-        delay: Math.random() * 10,
-        duration: 6 + Math.random() * 8,
-        dx: `${-40 + Math.random() * 80}px`,
-      })),
-    );
-  }, [density]);
+  const [particles] = useState(() =>
+    Array.from({ length: density }, (_, i) => ({
+      id: i,
+      x: `${Math.random() * 100}%`,
+      y: `${Math.random() * 100}%`,
+      size: 1.2 + Math.random() * 2,
+      delay: Math.random() * 8,
+      duration: 5 + Math.random() * 6,
+      dx: `${-30 + Math.random() * 60}px`,
+    }))
+  );
 
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
@@ -81,7 +74,7 @@ function ParticleField({ density = 24 }: { density?: number }) {
   );
 }
 
-// ── Stat Orb ───────────────────────────────────────────────────────────────
+// -- Stat Orb ---------------------------------------------------------------
 
 function StatOrb({
   value,
@@ -152,7 +145,7 @@ function StatOrb({
   );
 }
 
-// ── Feature Card (soft disc, never a rectangle) ────────────────────────────
+// -- Feature Card (soft disc, never a rectangle) ----------------------------
 
 function FeatureCard({
   icon,
@@ -208,7 +201,7 @@ function FeatureCard({
   );
 }
 
-// ── Navigation ─────────────────────────────────────────────────────────────
+// -- Navigation -------------------------------------------------------------
 
 function NavBar() {
   const router = useRouter();
@@ -252,6 +245,7 @@ function NavBar() {
         <div className="hidden items-center gap-8 sm:flex">
           {[
             { label: "Features", href: "#features" },
+            { label: "How It Works", href: "#how-it-works" },
             { label: "Platform", href: "#stats" },
           ].map((link) => (
             <a
@@ -264,13 +258,13 @@ function NavBar() {
           ))}
         </div>
 
-        {/* Auth buttons */}
-        <div className="flex items-center gap-3">
+        {/* Theme toggle + Auth buttons */}
+        <div className="flex items-center gap-2">
           {isLoading ? (
             <span className="spinner-ring" />
           ) : isAuthenticated ? (
             <button
-              onClick={() => router.push("/products")}
+              onClick={() => router.push("/dashboard")}
               className="btn-phosphor rounded-full px-5 py-2 text-sm"
             >
               Dashboard
@@ -297,7 +291,7 @@ function NavBar() {
   );
 }
 
-// ── Pulse Ring (system heartbeat) ──────────────────────────────────────────
+// -- Pulse Ring (system heartbeat) ------------------------------------------
 
 function PulseRing() {
   return (
@@ -336,10 +330,10 @@ export default function LandingPage() {
 
   return (
     <main className="relative min-h-dvh overflow-x-hidden">
-      <ParticleField density={28} />
+      <ParticleField density={12} />
       <NavBar />
 
-      {/* ── HERO SECTION ─────────────────────────────────────────────── */}
+      {/* -- HERO SECTION ----------------------------------------------- */}
       <section className="relative flex min-h-dvh flex-col items-center justify-center px-6 pt-24 pb-20 text-center sm:px-8">
         {/* Ambient glow */}
         <div
@@ -419,7 +413,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── STATS / TRUST SECTION ────────────────────────────────────── */}
+      {/* -- STATS / TRUST SECTION -------------------------------------- */}
       <section id="stats" className="relative py-24 sm:py-32">
         {/* Section fog — depth separator */}
         <div
@@ -477,7 +471,7 @@ export default function LandingPage() {
         />
       </section>
 
-      {/* ── FEATURES SECTION ─────────────────────────────────────────── */}
+      {/* -- FEATURES SECTION ------------------------------------------- */}
       <section id="features" className="relative py-24 sm:py-32">
         <div className="mx-auto max-w-6xl px-6 sm:px-8">
           <div className="mb-16 text-center">
@@ -569,7 +563,90 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── PRODUCT MANAGEMENT SECTION ───────────────────────────────── */}
+      {/* -- HOW IT WORKS SECTION ------------------------------------- */}
+      <section id="how-it-works" className="relative py-24 sm:py-32">
+        <div
+          className="pointer-events-none absolute top-0 right-0 left-0 h-px"
+          style={{ background: "linear-gradient(90deg, transparent 0%, rgba(200, 230, 201, 0.06) 50%, transparent 100%)" }}
+          aria-hidden="true"
+        />
+
+        <div className="mx-auto max-w-5xl px-6 sm:px-8">
+          <div className="mb-16 text-center">
+            <h2 className="font-sans text-2xl font-light text-solvent sm:text-3xl md:text-4xl">
+              How it <span className="font-medium text-phosphor">works</span>
+            </h2>
+            <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-solvent/40">
+              From submission to resolution — ResolveX handles every step automatically.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+            {[
+              {
+                step: "01",
+                title: "Submit Complaint",
+                description: "Customers submit complaints through the portal or API. Each complaint is categorized by product, priority, and severity.",
+                color: "rgba(200, 230, 201, 1)",
+              },
+              {
+                step: "02",
+                title: "Auto-Assignment",
+                description: "Our least-load algorithm instantly routes the complaint to the most available agent with the right skill set.",
+                color: "rgba(167, 243, 208, 1)",
+              },
+              {
+                step: "03",
+                title: "Track & Collaborate",
+                description: "Agents update status, add comments, upload attachments, and escalate when needed. SLA timers run in real time.",
+                color: "rgba(46, 74, 74, 1)",
+              },
+              {
+                step: "04",
+                title: "Resolve & Analyze",
+                description: "Complaints reach resolution, customers are notified, and all metrics are captured for dashboards and reporting.",
+                color: "rgba(226, 196, 152, 1)",
+              },
+            ].map((item, i) => (
+              <div key={i} className="group relative text-center">
+                {/* Step number */}
+                <div
+                  className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full transition-all duration-500 group-hover:scale-110"
+                  style={{
+                    background: `radial-gradient(circle at 35% 30%, ${item.color}22, ${item.color}08)`,
+                    border: `1px solid ${item.color}22`,
+                    boxShadow: `0 0 30px ${item.color}08`,
+                  }}
+                >
+                  <span className="font-mono text-lg font-semibold" style={{ color: item.color }}>{item.step}</span>
+                </div>
+
+                {/* Connector line (except last) */}
+                {i < 3 && (
+                  <div
+                    className="absolute top-8 left-[calc(50%+2.5rem)] hidden h-px w-[calc(100%-5rem)] md:block"
+                    style={{
+                      background: "linear-gradient(90deg, rgba(200, 230, 201, 0.1), rgba(200, 230, 201, 0.04))",
+                    }}
+                    aria-hidden="true"
+                  />
+                )}
+
+                <h3 className="mb-2 text-base font-medium text-solvent">{item.title}</h3>
+                <p className="text-sm leading-relaxed text-solvent/40">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div
+          className="pointer-events-none absolute bottom-0 right-0 left-0 h-px"
+          style={{ background: "linear-gradient(90deg, transparent 0%, rgba(200, 230, 201, 0.06) 50%, transparent 100%)" }}
+          aria-hidden="true"
+        />
+      </section>
+
+      {/* -- PRODUCT MANAGEMENT SECTION --------------------------------- */}
       <section className="relative py-24 sm:py-32">
         <div
           className="pointer-events-none absolute top-0 right-0 left-0 h-px"
@@ -622,7 +699,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA SECTION ──────────────────────────────────────────────── */}
+      {/* -- CTA SECTION ------------------------------------------------ */}
       <section className="relative py-24 sm:py-32">
         <div
           className="pointer-events-none absolute top-0 right-0 left-0 h-px"
@@ -660,31 +737,95 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────────────────── */}
+      {/* -- FOOTER ----------------------------------------------------- */}
       <footer
-        className="relative py-12"
+        className="relative py-16"
         style={{
           borderTop: "1px solid rgba(200, 230, 201, 0.04)",
         }}
       >
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-6 text-center sm:flex-row sm:justify-between sm:px-8">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="h-5 w-5 rounded-full"
-              style={{
-                background: "radial-gradient(circle at 40% 35%, rgba(200, 230, 201, 0.5), rgba(167, 243, 208, 0.2))",
-                boxShadow: "0 0 8px rgba(200, 230, 201, 0.1)",
-              }}
-            />
-            <span className="text-sm font-medium text-solvent/30">ResolveX © 2026</span>
+        <div className="mx-auto max-w-6xl px-6 sm:px-8">
+          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Company info */}
+            <div className="sm:col-span-2 lg:col-span-1">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className="h-6 w-6 rounded-full"
+                  style={{
+                    background: "radial-gradient(circle at 40% 35%, rgba(200, 230, 201, 0.5), rgba(167, 243, 208, 0.2))",
+                    boxShadow: "0 0 8px rgba(200, 230, 201, 0.1)",
+                  }}
+                />
+                <span className="text-sm font-medium text-solvent/50">ResolveX</span>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-solvent/20 max-w-xs">
+                A living membrane between an organization and its customers. Enterprise-grade complaint resolution at scale.
+              </p>
+            </div>
+
+            {/* Quick links */}
+            <div>
+              <h4 className="mb-4 text-[11px] font-medium tracking-wider text-solvent/30 uppercase">Platform</h4>
+              <ul className="space-y-2.5">
+                {["Features", "Dashboard", "Complaints", "Analytics"].map((link) => (
+                  <li key={link}>
+                    <button
+                      onClick={() => {
+                        const section = link.toLowerCase() === "features" ? "features" : null;
+                        if (section) document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="text-xs text-solvent/25 transition-colors hover:text-phosphor/60"
+                    >
+                      {link}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Resources */}
+            <div>
+              <h4 className="mb-4 text-[11px] font-medium tracking-wider text-solvent/30 uppercase">Resources</h4>
+              <ul className="space-y-2.5">
+                {["Documentation", "API Reference", "Status", "Support"].map((link) => (
+                  <li key={link}>
+                    <span className="text-xs text-solvent/15 transition-colors hover:text-solvent/30 cursor-default">
+                      {link}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h4 className="mb-4 text-[11px] font-medium tracking-wider text-solvent/30 uppercase">Contact</h4>
+              <ul className="space-y-2.5">
+                <li className="text-xs text-solvent/20">hello@resolvex.io</li>
+                <li className="text-xs text-solvent/20">San Francisco, CA</li>
+                <li className="mt-4">
+                  <button
+                    onClick={() => router.push("/register")}
+                    className="btn-phosphor rounded-full px-4 py-1.5 text-[11px]"
+                  >
+                    Get started
+                  </button>
+                </li>
+              </ul>
+            </div>
           </div>
-          <span className="text-xs text-solvent/20">
-            A living membrane between an organization and its customers.
-          </span>
+
+          {/* Bottom bar */}
+          <div
+            className="mt-12 pt-6 text-center text-[11px] text-solvent/15"
+            style={{ borderTop: "1px solid rgba(200, 230, 201, 0.03)" }}
+          >
+            ResolveX &copy; {new Date().getFullYear()} &mdash; Enterprise Complaint Management
+          </div>
         </div>
       </footer>
 
-      {/* ── Ground glow ── */}
+      {/* -- Ground glow -- */}
       <div
         className="pointer-events-none fixed bottom-0 left-1/2 h-40 w-[90vmin] -translate-x-1/2"
         style={{

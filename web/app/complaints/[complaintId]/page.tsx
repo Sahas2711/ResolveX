@@ -6,7 +6,7 @@ import { getAccessToken, useAuth, checkPermissions } from "@/hooks/useAuth";
 import { Permissions } from "@/lib/permissions";
 import AppNavigation from "@/components/AppNavigation";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface Complaint {
   id: string;
@@ -40,9 +40,10 @@ interface CommentItem {
   isEdited: boolean;
   createdAt: string;
   updatedAt: string;
+  animationDelay?: string;
 }
 
-// ── Status config ──────────────────────────────────────────────────────────
+// -- Status config ----------------------------------------------------------
 
 const STATUS_NODES: Array<{
   id: string; label: string; color: string; bg: string; glow: string;
@@ -59,7 +60,7 @@ const STATUS_NODES: Array<{
 
 const STATUS_MAP = Object.fromEntries(STATUS_NODES.map((n) => [n.id, n]));
 
-// ── Transition definitions for the UI ──────────────────────────────────────
+// -- Transition definitions for the UI --------------------------------------
 
 interface UITransition {
   id: string;
@@ -104,7 +105,7 @@ const TRANSITIONS_BY_STATUS: Record<string, UITransition[]> = {
   ],
 };
 
-// ── Priority & Severity config ─────────────────────────────────────────────
+// -- Priority & Severity config ---------------------------------------------
 
 const PRIORITY_OPTIONS = [
   { value: "low", label: "Low", color: "rgba(240, 244, 248, 0.3)" },
@@ -124,18 +125,13 @@ const SEVERITY_OPTIONS = [
 // ═══════════════════════════════════════════════════════════════════════════
 
 function ParticleField() {
-  const [particles, setParticles] = useState<Array<{
-    id: number; x: string; y: string; size: number;
-    delay: number; duration: number; dx: string;
-  }>>([]);
-
-  useEffect(() => {
-    setParticles(Array.from({ length: 10 }, (_, i) => ({
+  const [particles] = useState(() =>
+    Array.from({ length: 10 }, (_, i) => ({
       id: i, x: `${Math.random() * 100}%`, y: `${Math.random() * 100}%`,
       size: 1.2 + Math.random() * 2, delay: Math.random() * 8,
       duration: 5 + Math.random() * 7, dx: `${-30 + Math.random() * 60}px`,
-    })));
-  }, []);
+    }))
+  );
 
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
@@ -592,7 +588,7 @@ function AttachmentSection({
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Fetch attachments ──────────────────────────────────────────────────
+  // -- Fetch attachments --------------------------------------------------
   const fetchAttachments = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -611,9 +607,9 @@ function AttachmentSection({
     }
   }, [complaintId]);
 
-  useEffect(() => { fetchAttachments(); }, [fetchAttachments]);
+  useEffect(() => { /* eslint-disable react-hooks/set-state-in-effect */ fetchAttachments(); /* eslint-enable react-hooks/set-state-in-effect */ }, [fetchAttachments]);
 
-  // ── Upload handler ─────────────────────────────────────────────────────
+  // -- Upload handler -----------------------------------------------------
   async function handleUpload(file: File) {
     setIsUploading(true);
     setUploadError(null);
@@ -645,7 +641,7 @@ function AttachmentSection({
     }
   }
 
-  // ── File input change ──────────────────────────────────────────────────
+  // -- File input change --------------------------------------------------
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -654,7 +650,7 @@ function AttachmentSection({
     e.target.value = "";
   }
 
-  // ── Drag & drop handlers ───────────────────────────────────────────────
+  // -- Drag & drop handlers -----------------------------------------------
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(true);
@@ -674,7 +670,7 @@ function AttachmentSection({
     }
   }
 
-  // ── Delete handler ─────────────────────────────────────────────────────
+  // -- Delete handler -----------------------------------------------------
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -700,14 +696,14 @@ function AttachmentSection({
     }
   }
 
-  // ── Format file size ───────────────────────────────────────────────────
+  // -- Format file size ---------------------------------------------------
   function formatFileSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  // ── Format timestamp ───────────────────────────────────────────────────
+  // -- Format timestamp ---------------------------------------------------
   function formatTime(iso: string): string {
     const dt = new Date(iso);
     const now = new Date();
@@ -723,7 +719,7 @@ function AttachmentSection({
     return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 
-  // ── File type icon helper ──────────────────────────────────────────────
+  // -- File type icon helper ----------------------------------------------
   function getFileIcon(fileType: string): string {
     if (fileType.startsWith("image/")) return "image";
     if (fileType.includes("pdf")) return "pdf";
@@ -733,7 +729,7 @@ function AttachmentSection({
 
   return (
     <div className="mt-8 pt-6" style={{ borderTop: "1px solid rgba(200, 230, 201, 0.06)" }}>
-      {/* ── Header ── */}
+      {/* -- Header -- */}
       <div className="mb-5 flex items-center gap-2">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
@@ -747,7 +743,7 @@ function AttachmentSection({
         )}
       </div>
 
-      {/* ── Upload error ── */}
+      {/* -- Upload error -- */}
       {uploadError && (
         <div className="mb-4 rounded-2xl px-3 py-2 text-xs"
           style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)", color: "var(--color-magma)" }}
@@ -757,7 +753,7 @@ function AttachmentSection({
         </div>
       )}
 
-      {/* ── Upload drop zone ── */}
+      {/* -- Upload drop zone -- */}
       {canUpload && (
         <div
           onDragOver={handleDragOver}
@@ -803,7 +799,7 @@ function AttachmentSection({
         </div>
       )}
 
-      {/* ── Loading state ── */}
+      {/* -- Loading state -- */}
       {isLoading && (
         <div className="space-y-2">
           {[1, 2].map((i) => (
@@ -822,7 +818,7 @@ function AttachmentSection({
         </div>
       )}
 
-      {/* ── Error state ── */}
+      {/* -- Error state -- */}
       {error && !isLoading && (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <div className="flex h-10 w-10 items-center justify-center rounded-full"
@@ -843,7 +839,7 @@ function AttachmentSection({
         </div>
       )}
 
-      {/* ── Empty state ── */}
+      {/* -- Empty state -- */}
       {!isLoading && !error && attachments.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-8 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full"
@@ -859,7 +855,7 @@ function AttachmentSection({
         </div>
       )}
 
-      {/* ── Attachment list ── */}
+      {/* -- Attachment list -- */}
       {attachments.length > 0 && (
         <div className="space-y-2">
           {attachments.map((a) => {
@@ -955,7 +951,7 @@ function AttachmentSection({
         </div>
       )}
 
-      {/* ── Delete confirmation modal ── */}
+      {/* -- Delete confirmation modal -- */}
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(8px)" }}
@@ -1048,7 +1044,7 @@ function CommentSection({
   // Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // ── Fetch comments ──────────────────────────────────────────────────
+  // -- Fetch comments --------------------------------------------------
   const fetchComments = useCallback(async (pageNum: number, append = false) => {
     setIsLoading(true);
     setError(null);
@@ -1061,7 +1057,11 @@ function CommentSection({
       if (!res.ok) throw new Error("Failed to fetch comments");
       const body = await res.json();
       const fetched = (body.data ?? []) as CommentItem[];
-      setComments((prev) => (append ? [...prev, ...fetched] : fetched));
+      const withDelays = fetched.map((c) => ({
+        ...c,
+        animationDelay: `${(Math.random() * 100).toFixed(0)}ms`,
+      }));
+      setComments((prev) => (append ? [...prev, ...withDelays] : withDelays));
       setHasMore(body.meta ? pageNum < (body.meta.totalPages ?? 1) : false);
     } catch {
       setError("Failed to load comments");
@@ -1070,9 +1070,9 @@ function CommentSection({
     }
   }, [complaintId]);
 
-  useEffect(() => { fetchComments(1); }, [fetchComments]);
+  useEffect(() => { /* eslint-disable react-hooks/set-state-in-effect */ fetchComments(1); /* eslint-enable react-hooks/set-state-in-effect */ }, [fetchComments]);
 
-  // ── Auto-poll new comments every 30s ────────────────────────────────
+  // -- Auto-poll new comments every 30s --------------------------------
   useEffect(() => {
     if (error) return;
     const interval = setInterval(() => {
@@ -1087,7 +1087,12 @@ function CommentSection({
           setComments((prev) => {
             // Merge: prepend any new comments not already in the list
             const existingIds = new Set(prev.map((c) => c.id));
-            const newOnes = fetched.filter((c) => !existingIds.has(c.id));
+            const newOnes = fetched
+              .filter((c) => !existingIds.has(c.id))
+              .map((c) => ({
+                ...c,
+                animationDelay: `${(Math.random() * 100).toFixed(0)}ms`,
+              }));
             if (newOnes.length === 0) return prev;
             return [...newOnes, ...prev];
           });
@@ -1100,23 +1105,25 @@ function CommentSection({
     return () => clearInterval(interval);
   }, [complaintId, error]);
 
-  // ── Track newest comment ID for "New" indicator ────────────────────
+  // -- Track newest comment ID for "New" indicator --------------------
   const [newestId, setNewestId] = useState<string | null>(null);
 
   useEffect(() => {
     if (comments.length > 0) {
+      /* eslint-disable react-hooks/set-state-in-effect */
       setNewestId(comments[0].id);
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [comments.length]);
 
-  // ── Load more ───────────────────────────────────────────────────────
+  // -- Load more -------------------------------------------------------
   function handleLoadMore() {
     const next = page + 1;
     setPage(next);
     fetchComments(next, true);
   }
 
-  // ── Post a comment ──────────────────────────────────────────────────
+  // -- Post a comment --------------------------------------------------
   async function handlePost() {
     const trimmed = content.trim();
     if (!trimmed) return;
@@ -1153,7 +1160,7 @@ function CommentSection({
     }
   }
 
-  // ── Format timestamp ────────────────────────────────────────────────
+  // -- Format timestamp ------------------------------------------------
   function formatTime(iso: string): string {
     const dt = new Date(iso);
     const now = new Date();
@@ -1172,7 +1179,7 @@ function CommentSection({
     return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   }
 
-  // ── Get initials from name ──────────────────────────────────────────
+  // -- Get initials from name ------------------------------------------
   function getInitials(name: string): string {
     return name
       .split(" ")
@@ -1182,7 +1189,7 @@ function CommentSection({
       .slice(0, 2);
   }
 
-  // ── Comment color from name (deterministic hue) ─────────────────────
+  // -- Comment color from name (deterministic hue) ---------------------
   function avatarColor(name: string): string {
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
@@ -1192,7 +1199,7 @@ function CommentSection({
     return `hsl(${hue}, 40%, 55%)`;
   }
 
-  // ── Edit handlers ─────────────────────────────────────────────────
+  // -- Edit handlers -------------------------------------------------
   function handleStartEdit(c: CommentItem) {
     setEditingId(c.id);
     setEditContent(c.content);
@@ -1255,13 +1262,13 @@ function CommentSection({
     }
   }
 
-  // ── Delete handler ─────────────────────────────────────────────────
+  // -- Delete handler -------------------------------------------------
   function handleDeleteSuccess(commentId: string) {
     setComments((prev) => prev.filter((c) => c.id !== commentId));
     setDeletingId(null);
   }
 
-  // ── Key handler for textarea ────────────────────────────────────────
+  // -- Key handler for textarea ----------------------------------------
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -1271,7 +1278,7 @@ function CommentSection({
 
   return (
     <div className="mt-8 pt-6" style={{ borderTop: "1px solid rgba(200, 230, 201, 0.06)" }}>
-      {/* ── Header ── */}
+      {/* -- Header -- */}
       <div className="mb-5 flex items-center gap-2">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"
@@ -1291,7 +1298,7 @@ function CommentSection({
         )}
       </div>
 
-      {/* ── Post error ── */}
+      {/* -- Post error -- */}
       {postError && (
         <div className="mb-4 rounded-2xl px-3 py-2 text-xs"
           style={{ background: "rgba(255, 111, 60, 0.08)", border: "1px solid rgba(255, 111, 60, 0.1)", color: "var(--color-magma)" }}
@@ -1301,7 +1308,7 @@ function CommentSection({
         </div>
       )}
 
-      {/* ── Post form ── */}
+      {/* -- Post form -- */}
       {canComment && (
         <div
           className="mb-6 rounded-2xl p-4 transition-all duration-200 focus-within:shadow-lg"
@@ -1358,7 +1365,7 @@ function CommentSection({
         </div>
       )}
 
-      {/* ── Loading skeleton ── */}
+      {/* -- Loading skeleton -- */}
       {isLoading && comments.length === 0 && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -1377,7 +1384,7 @@ function CommentSection({
         </div>
       )}
 
-      {/* ── Error state ── */}
+      {/* -- Error state -- */}
       {error && !isLoading && comments.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-8 text-center">
           <div className="flex h-10 w-10 items-center justify-center rounded-full"
@@ -1398,7 +1405,7 @@ function CommentSection({
         </div>
       )}
 
-      {/* ── Empty state ── */}
+      {/* -- Empty state -- */}
       {!isLoading && !error && comments.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full"
@@ -1417,7 +1424,7 @@ function CommentSection({
         </div>
       )}
 
-      {/* ── Comment list ── */}
+      {/* -- Comment list -- */}
       {comments.length > 0 && (
         <div className="space-y-2.5">
           {comments.map((c) => {
@@ -1433,7 +1440,7 @@ function CommentSection({
                   isEditing ? "" : "hover:scale-[1.005]"
                 } ${isNewest ? "animate-fade-in" : "animate-fade-in"}`}
                 style={{
-                  animationDelay: isNewest ? "0ms" : `${Math.random() * 100}ms`,
+                  animationDelay: isNewest ? "0ms" : c.animationDelay || "0ms",
                   background: c.internal
                     ? "rgba(226, 196, 152, 0.04)"
                     : "rgba(10, 14, 20, 0.3)",
@@ -1576,7 +1583,7 @@ function CommentSection({
         </div>
       )}
 
-      {/* ── Load more ── */}
+      {/* -- Load more -- */}
       {hasMore && (
         <div className="mt-4 text-center">
           <button
@@ -1601,7 +1608,7 @@ function CommentSection({
         </div>
       )}
 
-      {/* ── Delete confirmation modal ── */}
+      {/* -- Delete confirmation modal -- */}
       {deletingId && (
         <DeleteConfirmModal
           complaintId={complaintId}
@@ -1652,7 +1659,7 @@ export default function ComplaintDetailPage() {
   const canComment = profile ? checkPermissions(auth, [Permissions.COMPLAINT_COMMENT]).allowed : false;
   const canUploadAttachments = profile ? checkPermissions(auth, [Permissions.COMPLAINT_ATTACHMENT]).allowed : false;
 
-  // ── Fetch complaint ─────────────────────────────────────────────────────
+  // -- Fetch complaint -----------------------------------------------------
   const fetchComplaint = useCallback(async () => {
     if (authLoading || !isAuthenticated || !complaintId) return;
     setIsFetching(true);
@@ -1673,19 +1680,21 @@ export default function ComplaintDetailPage() {
     }
   }, [complaintId, authLoading, isAuthenticated]);
 
-  useEffect(() => { fetchComplaint(); }, [fetchComplaint]);
+  useEffect(() => { /* eslint-disable react-hooks/set-state-in-effect */ fetchComplaint(); /* eslint-enable react-hooks/set-state-in-effect */ }, [fetchComplaint]);
 
-  // ── Init edit values when complaint loads ──────────────────────────────
+  // -- Init edit values when complaint loads ------------------------------
   useEffect(() => {
     if (complaint) {
+      /* eslint-disable react-hooks/set-state-in-effect */
       setEditPriority(complaint.priority);
       setEditSeverity(complaint.severity);
       setEditDescription(complaint.description);
       setEditCategory(complaint.category);
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [complaint]);
 
-  // ── Save field update ──────────────────────────────────────────────────
+  // -- Save field update --------------------------------------------------
   async function handleSaveField(field: string) {
     if (!complaint) return;
     setIsSaving(true);
@@ -1727,7 +1736,7 @@ export default function ComplaintDetailPage() {
     }
   }
 
-  // ── Cancel editing ────────────────────────────────────────────────────
+  // -- Cancel editing ----------------------------------------------------
   function handleCancelEdit() {
     setEditField(null);
     setSaveError(null);
@@ -1739,7 +1748,7 @@ export default function ComplaintDetailPage() {
     }
   }
 
-  // ── Handle status transition success ──────────────────────────────────
+  // -- Handle status transition success ----------------------------------
   function handleTransitionSuccess(data: Complaint) {
     setComplaint(data);
     setActiveTransition(null);
@@ -1749,7 +1758,7 @@ export default function ComplaintDetailPage() {
     setTimeout(() => setTransitionSuccess(null), 4000);
   }
 
-  // ── Check if user can perform a specific transition ───────────────────
+  // -- Check if user can perform a specific transition -------------------
   function canPerformTransition(t: UITransition): boolean {
     if (t.endpoint === "/status") return canUpdateStatus;
     if (t.endpoint === "/resolve") return canResolve;
@@ -1759,7 +1768,7 @@ export default function ComplaintDetailPage() {
     return false;
   }
 
-  // ── Auth gate ─────────────────────────────────────────────────────────
+  // -- Auth gate ---------------------------------------------------------
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/login");
   }, [authLoading, isAuthenticated, router]);
@@ -1780,7 +1789,7 @@ export default function ComplaintDetailPage() {
       />
 
       <div className="mx-auto max-w-2xl">
-        {/* ── Back link ── */}
+        {/* -- Back link -- */}
         <button onClick={() => router.push("/complaints")}
           className="mb-6 mt-6 flex items-center gap-2 text-sm text-solvent/30 transition-colors hover:text-phosphor"
         >
@@ -1790,7 +1799,7 @@ export default function ComplaintDetailPage() {
           Back to complaints
         </button>
 
-        {/* ── Feedback toasts ── */}
+        {/* -- Feedback toasts -- */}
         {saveSuccess && (
           <div className="mb-4 animate-slide-up rounded-2xl px-4 py-2.5 text-sm"
             style={{ background: "rgba(167, 243, 208, 0.08)", border: "1px solid rgba(167, 243, 208, 0.12)", color: "var(--color-aurora)" }}
@@ -1825,7 +1834,7 @@ export default function ComplaintDetailPage() {
           </div>
         )}
 
-        {/* ── Loading ── */}
+        {/* -- Loading -- */}
         {isFetching ? (
           <div className="animate-pulse space-y-4 rounded-[2rem] p-8"
             style={{ background: "linear-gradient(135deg, rgba(19, 26, 36, 0.6), rgba(26, 31, 40, 0.5))", border: "1px solid rgba(200, 230, 201, 0.04)" }}
@@ -1849,7 +1858,7 @@ export default function ComplaintDetailPage() {
           </div>
         ) : complaint && sc ? (
           <>
-            {/* ── Status Flow Diagram ── */}
+            {/* -- Status Flow Diagram -- */}
             <div className="mb-6 animate-fade-in rounded-[2rem] p-5"
               style={{
                 background: "linear-gradient(135deg, rgba(19, 26, 36, 0.6), rgba(26, 31, 40, 0.5))",
@@ -1858,7 +1867,7 @@ export default function ComplaintDetailPage() {
             >
               <StatusFlowDiagram currentStatus={complaint.currentStatus} />
 
-              {/* ── Transition Action Buttons ── */}
+              {/* -- Transition Action Buttons -- */}
               {(() => {
                 const transitions = TRANSITIONS_BY_STATUS[complaint.currentStatus] ?? [];
                 const available = transitions.filter(canPerformTransition);
@@ -1917,7 +1926,7 @@ export default function ComplaintDetailPage() {
               })()}
             </div>
 
-            {/* ── Complaint detail halo ── */}
+            {/* -- Complaint detail halo -- */}
             <div className="animate-fade-in rounded-[2.5rem] p-6 sm:p-10"
               style={{
                 background: "linear-gradient(135deg, rgba(19, 26, 36, 0.75), rgba(26, 31, 40, 0.65))",
@@ -1930,7 +1939,7 @@ export default function ComplaintDetailPage() {
                 aria-hidden="true"
               />
 
-              {/* ── Header ── */}
+              {/* -- Header -- */}
               <div className="mb-8 flex items-start justify-between gap-4">
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -1952,7 +1961,7 @@ export default function ComplaintDetailPage() {
                 </div>
               </div>
 
-              {/* ── Product & Category ── */}
+              {/* -- Product & Category -- */}
               <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl p-4" style={{ background: "rgba(10, 14, 20, 0.4)", border: "1px solid rgba(200, 230, 201, 0.03)" }}>
                   <span className="text-[11px] font-medium tracking-wider text-solvent/20 uppercase">Product</span>
@@ -1994,7 +2003,7 @@ export default function ComplaintDetailPage() {
                 </EditableField>
               </div>
 
-              {/* ── Priority & Severity ── */}
+              {/* -- Priority & Severity -- */}
               <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <EditableField label="Priority" value={complaint.priority} isEditing={editField === "priority"}>
                   {editField === "priority" ? (
@@ -2085,7 +2094,7 @@ export default function ComplaintDetailPage() {
                 </EditableField>
               </div>
 
-              {/* ── Description ── */}
+              {/* -- Description -- */}
               <div className="mb-6">
                 <EditableField label="Description" value={complaint.description} isEditing={editField === "description"}>
                   {editField === "description" ? (
@@ -2124,7 +2133,7 @@ export default function ComplaintDetailPage() {
                 </EditableField>
               </div>
 
-              {/* ── Assignment & SLA info ── */}
+              {/* -- Assignment & SLA info -- */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl p-4" style={{ background: "rgba(10, 14, 20, 0.4)", border: "1px solid rgba(200, 230, 201, 0.03)" }}>
                   <span className="text-[11px] font-medium tracking-wider text-solvent/20 uppercase">Assigned Team</span>
@@ -2173,24 +2182,24 @@ export default function ComplaintDetailPage() {
                 )}
               </div>
 
-              {/* ── Timestamps footer ── */}
+              {/* -- Timestamps footer -- */}
               <div className="mt-6 flex flex-wrap gap-4 text-[11px] tracking-wide text-solvent/20">
                 <span className="font-mono">ID: {complaint.id}</span>
                 <span>User: {complaint.userId}</span>
               </div>
 
-              {/* ── Comment Section ── */}
-              {/* ── Attachment Section ── */}
+              {/* -- Comment Section -- */}
+              {/* -- Attachment Section -- */}
               <AttachmentSection complaintId={complaintId} canUpload={canUploadAttachments} currentUserId={profile?.id ?? ""} />
 
-              {/* ── Comment Section ── */}
+              {/* -- Comment Section -- */}
               <CommentSection complaintId={complaintId} canComment={canComment} currentUserId={profile?.id ?? ""} />
             </div>
           </>
         ) : null}
       </div>
 
-      {/* ── Transition Modal ── */}
+      {/* -- Transition Modal -- */}
       {activeTransition && complaint && (
         <TransitionModal
           transition={activeTransition}

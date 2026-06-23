@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-// ── Product Status ─────────────────────────────────────────────────────────
+// -- Product Status ---------------------------------------------------------
 // API spec: "status" is enum [active, inactive]
 // Prisma:    ProductStatus = ACTIVE | DEPRECATED | DISABLED
 // Mapping:   active → ACTIVE, inactive → DISABLED
@@ -24,7 +24,7 @@ export function mapPrismaStatusToApi(
   return status === "ACTIVE" ? "active" : "inactive";
 }
 
-// ── Create Product Schema ──────────────────────────────────────────────────
+// -- Create Product Schema --------------------------------------------------
 // API spec: ProductCreateRequest { name, description?, status? }
 export const createProductSchema = z.object({
   name: z
@@ -43,7 +43,7 @@ export const createProductSchema = z.object({
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
-// ── Update Product Schema ──────────────────────────────────────────────────
+// -- Update Product Schema --------------------------------------------------
 // API spec: ProductUpdateRequest { name?, description?, status? }
 // (Will be used in Phase 2 – Update & Delete)
 export const updateProductSchema = z.object({
@@ -63,7 +63,7 @@ export const updateProductSchema = z.object({
 
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 
-// ── Query / List Schema ────────────────────────────────────────────────────
+// -- Query / List Schema ----------------------------------------------------
 export const listProductsSchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
@@ -74,7 +74,7 @@ export const listProductsSchema = z.object({
 
 export type ListProductsInput = z.infer<typeof listProductsSchema>;
 
-// ── Product Response Shape (matches API spec) ──────────────────────────────
+// -- Product Response Shape (matches API spec) ------------------------------
 export interface ProductResponse {
   id: string;
   name: string;
@@ -84,7 +84,7 @@ export interface ProductResponse {
   updatedAt: string;
 }
 
-// ── Helper: Map a Prisma Product row to the API response shape ────────────
+// -- Helper: Map a Prisma Product row to the API response shape ------------
 
 export interface ProductSelectShape {
   id: string;

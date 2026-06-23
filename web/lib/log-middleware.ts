@@ -22,7 +22,7 @@
 import { requestLogger, LogContext } from "@/lib/logger";
 import { internalErrorResponse } from "@/lib/response";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 export type RouteHandler<T = unknown> = (
   request: Request,
@@ -36,7 +36,7 @@ export interface LoggingOptions {
   context?: LogContext;
 }
 
-// ── Wrapper ────────────────────────────────────────────────────────────────
+// -- Wrapper ----------------------------------------------------------------
 
 /**
  * Wraps a route handler with enterprise request/response lifecycle logging.

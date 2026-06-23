@@ -56,16 +56,16 @@ export async function POST(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_ESCALATE);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract complaintId ──────────────────────────────────────────
+    // -- Extract complaintId ------------------------------------------
     const { complaintId } = await params;
     ctx.complaintId = complaintId;
 
-    // ── Verify complaint exists ──────────────────────────────────────
+    // -- Verify complaint exists --------------------------------------
     const complaint = await prisma.complaint.findFirst({
       where: { id: complaintId, deletedAt: null },
       select: {
@@ -85,12 +85,12 @@ export async function POST(
     ctx.ticketNumber = complaint.ticketNumber;
     ctx.currentStatus = complaint.currentStatus;
 
-    // ── Validate: not already escalated ───────────────────────────────
+    // -- Validate: not already escalated -------------------------------
     if (complaint.currentStatus === "ESCALATED") {
       return conflictResponse("Complaint is already escalated");
     }
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = escalateComplaintSchema.safeParse(body);
 
@@ -105,7 +105,7 @@ export async function POST(
 
     const { reason, escalationLevel } = parsed.data;
 
-    // ── Execute the escalate transition in a transaction ──────────────
+    // -- Execute the escalate transition in a transaction --------------
     const updated = await prisma.$transaction(async (tx: any) => {
       // 1. Execute the status transition
       await executeTransition(tx, {
@@ -134,7 +134,7 @@ export async function POST(
       });
     });
 
-    // ── Send notifications (fire-and-forget) ──────────────────────────
+    // -- Send notifications (fire-and-forget) --------------------------
     buildStatusNotifications(
       complaintId,
       complaint.ticketNumber,

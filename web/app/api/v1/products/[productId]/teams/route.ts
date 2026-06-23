@@ -23,7 +23,7 @@ import {
   toProductTeamMappingResponse,
 } from "@/lib/validators/team";
 
-// ── GET: List Teams Mapped to Product ──────────────────────────────────────
+// -- GET: List Teams Mapped to Product --------------------------------------
 
 /**
  * GET /api/v1/products/{productId}/teams
@@ -42,16 +42,16 @@ export async function GET(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.PRODUCT_READ);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract productId ────────────────────────────────────────────
+    // -- Extract productId --------------------------------------------
     const { productId } = await params;
     ctx.productId = productId;
 
-    // ── Verify product exists ────────────────────────────────────────
+    // -- Verify product exists ----------------------------------------
     const product = await prisma.product.findFirst({
       where: { id: productId, deletedAt: null },
       select: { id: true, productName: true },
@@ -61,7 +61,7 @@ export async function GET(
       return notFoundResponse("Product not found");
     }
 
-    // ── Fetch team mappings ──────────────────────────────────────────
+    // -- Fetch team mappings ------------------------------------------
     const mappings = await prisma.productTeamMapping.findMany({
       where: { productId },
       select: {
@@ -88,7 +88,7 @@ export async function GET(
   }
 }
 
-// ── POST: Map a Team to Product ────────────────────────────────────────────
+// -- POST: Map a Team to Product --------------------------------------------
 
 /**
  * POST /api/v1/products/{productId}/teams
@@ -114,16 +114,16 @@ export async function POST(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.PRODUCT_UPDATE);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract productId ────────────────────────────────────────────
+    // -- Extract productId --------------------------------------------
     const { productId } = await params;
     ctx.productId = productId;
 
-    // ── Verify product exists ────────────────────────────────────────
+    // -- Verify product exists ----------------------------------------
     const product = await prisma.product.findFirst({
       where: { id: productId, deletedAt: null },
       select: { id: true, productName: true },
@@ -133,7 +133,7 @@ export async function POST(
       return notFoundResponse("Product not found");
     }
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = mapTeamSchema.safeParse(body);
 
@@ -148,7 +148,7 @@ export async function POST(
 
     const { teamId, isPrimary, loadWeight } = parsed.data;
 
-    // ── Verify team exists ───────────────────────────────────────────
+    // -- Verify team exists -------------------------------------------
     const team = await prisma.team.findFirst({
       where: { id: teamId, deletedAt: null },
       select: { id: true, teamName: true },
@@ -158,7 +158,7 @@ export async function POST(
       return notFoundResponse("Team not found");
     }
 
-    // ── Check for duplicate mapping ──────────────────────────────────
+    // -- Check for duplicate mapping ----------------------------------
     const existingMapping = await prisma.productTeamMapping.findUnique({
       where: { productId_teamId: { productId, teamId } },
     });
@@ -167,7 +167,7 @@ export async function POST(
       return conflictResponse("This team is already mapped to the product");
     }
 
-    // ── If isPrimary, unset any existing primary mapping ──────────────
+    // -- If isPrimary, unset any existing primary mapping --------------
     if (isPrimary) {
       await prisma.productTeamMapping.updateMany({
         where: { productId, isPrimary: true },
@@ -175,7 +175,7 @@ export async function POST(
       });
     }
 
-    // ── Create mapping ───────────────────────────────────────────────
+    // -- Create mapping -----------------------------------------------
     const mapping = await prisma.productTeamMapping.create({
       data: {
         productId,
@@ -209,7 +209,7 @@ export async function POST(
   }
 }
 
-// ── DELETE: Remove Team Mapping ────────────────────────────────────────────
+// -- DELETE: Remove Team Mapping --------------------------------------------
 
 /**
  * DELETE /api/v1/products/{productId}/teams?teamId={teamId}
@@ -230,12 +230,12 @@ export async function DELETE(
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.PRODUCT_UPDATE);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Extract productId and teamId ─────────────────────────────────
+    // -- Extract productId and teamId ---------------------------------
     const { productId } = await params;
     ctx.productId = productId;
 
@@ -254,7 +254,7 @@ export async function DELETE(
 
     ctx.mappedTeamId = teamId;
 
-    // ── Verify product exists ────────────────────────────────────────
+    // -- Verify product exists ----------------------------------------
     const product = await prisma.product.findFirst({
       where: { id: productId, deletedAt: null },
       select: { id: true, productName: true },
@@ -264,7 +264,7 @@ export async function DELETE(
       return notFoundResponse("Product not found");
     }
 
-    // ── Verify mapping exists ────────────────────────────────────────
+    // -- Verify mapping exists ----------------------------------------
     const mapping = await prisma.productTeamMapping.findUnique({
       where: { productId_teamId: { productId, teamId } },
       select: {
@@ -276,7 +276,7 @@ export async function DELETE(
       return notFoundResponse("Team mapping not found");
     }
 
-    // ── Remove mapping ───────────────────────────────────────────────
+    // -- Remove mapping -----------------------------------------------
     await prisma.productTeamMapping.delete({
       where: { productId_teamId: { productId, teamId } },
     });

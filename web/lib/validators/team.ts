@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-// ── Team Member Role ───────────────────────────────────────────────────────
+// -- Team Member Role -------------------------------------------------------
 // API spec: "role" is enum [lead, member]
 // Prisma:    TeamMemberRole = LEAD | MEMBER
 export const ApiTeamMemberRole = z.enum(["lead", "member"]);
@@ -23,7 +23,7 @@ export function mapPrismaRoleToApi(
   return role === "LEAD" ? "lead" : "member";
 }
 
-// ── Create Team Schema ─────────────────────────────────────────────────────
+// -- Create Team Schema -----------------------------------------------------
 // API spec: { name: string, maxLength: 100, required }
 export const createTeamSchema = z.object({
   name: z
@@ -41,7 +41,7 @@ export const createTeamSchema = z.object({
 
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;
 
-// ── Update Team Schema ─────────────────────────────────────────────────────
+// -- Update Team Schema -----------------------------------------------------
 // API spec: PUT /teams/{teamId} { name: string, maxLength: 100, required }
 export const updateTeamSchema = z.object({
   name: z
@@ -58,7 +58,7 @@ export const updateTeamSchema = z.object({
 
 export type UpdateTeamInput = z.infer<typeof updateTeamSchema>;
 
-// ── List Teams Query Schema ────────────────────────────────────────────────
+// -- List Teams Query Schema ------------------------------------------------
 export const listTeamsSchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
@@ -67,7 +67,7 @@ export const listTeamsSchema = z.object({
 
 export type ListTeamsInput = z.infer<typeof listTeamsSchema>;
 
-// ── Add Member Schema ──────────────────────────────────────────────────────
+// -- Add Member Schema ------------------------------------------------------
 // API spec: POST /teams/{teamId}/members { userId, role: lead|member }
 export const addMemberSchema = z.object({
   userId: z.string().uuid("Invalid user ID format"),
@@ -76,7 +76,7 @@ export const addMemberSchema = z.object({
 
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
 
-// ── Map Team to Product Schema ─────────────────────────────────────────────
+// -- Map Team to Product Schema ---------------------------------------------
 // API spec: POST /products/{productId}/teams { teamId, isPrimary?, loadWeight? }
 export const mapTeamSchema = z.object({
   teamId: z.string().uuid("Invalid team ID format"),
@@ -86,7 +86,7 @@ export const mapTeamSchema = z.object({
 
 export type MapTeamInput = z.infer<typeof mapTeamSchema>;
 
-// ── ProductTeamMapping Response Shape (matches API spec) ───────────────────
+// -- ProductTeamMapping Response Shape (matches API spec) -------------------
 export interface ProductTeamMappingResponse {
   teamId: string;
   teamName: string;
@@ -94,7 +94,7 @@ export interface ProductTeamMappingResponse {
   loadWeight: number;
 }
 
-// ── Helper: Map a Prisma ProductTeamMapping row to API response shape ─────
+// -- Helper: Map a Prisma ProductTeamMapping row to API response shape -----
 export interface ProductTeamMappingSelectShape {
   teamId: string;
   isPrimary: boolean;
@@ -115,7 +115,7 @@ export function toProductTeamMappingResponse(
   };
 }
 
-// ── Team Response Shape ────────────────────────────────────────────────────
+// -- Team Response Shape ----------------------------------------------------
 export interface TeamResponse {
   id: string;
   name: string;
@@ -134,7 +134,7 @@ export interface TeamMemberResponse {
   roles: string[];
 }
 
-// ── Helper: Map a Prisma Team row to the API response shape ────────────────
+// -- Helper: Map a Prisma Team row to the API response shape ----------------
 
 export interface TeamSelectShape {
   id: string;
@@ -154,7 +154,7 @@ export function toTeamResponse(team: TeamSelectShape): TeamResponse {
   };
 }
 
-// ── Helper: Map a Prisma TeamMember row to the API response shape ──────────
+// -- Helper: Map a Prisma TeamMember row to the API response shape ----------
 
 export interface TeamMemberSelectShape {
   userId: string;

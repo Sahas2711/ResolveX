@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { Permissions } from "@/lib/permissions";
 import { requirePermissions } from "@/lib/rbac";
 import {
+  successResponse,
   createdResponse,
   notFoundResponse,
   validationErrorResponse,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/response";
 import {
   createComplaintSchema,
+  listComplaintsSchema,
   mapApiPriorityToPrisma,
   mapApiSeverityToPrisma,
   complaintSelect,
@@ -22,7 +24,7 @@ import {
 } from "@/lib/validators/complaint";
 import { resolveBestAssignment } from "@/lib/services/auto-assignment-engine";
 
-// ── Ticket Number Generation ───────────────────────────────────────────────
+// -- Ticket Number Generation -----------------------------------------------
 
 /**
  * Generates a unique ticket number in the format TKT-YYYYMMDD-XXXX
@@ -54,7 +56,7 @@ async function generateTicketNumber(): Promise<string> {
   return `${prefix}${String(nextSeq).padStart(4, "0")}`;
 }
 
-// ── Create Assignment Notification ────────────────────────────────────────
+// -- Create Assignment Notification ----------------------------------------
 
 async function createAssignmentNotification(
   complaintId: string,
@@ -106,6 +108,115 @@ async function createAssignmentNotification(
   }
 }
 
+// -- Status mapping --------------------------------------------------------
+
+const STATUS_MAP: Record<string, string> = {
+  open: "OPEN",
+  assigned: "ASSIGNED",
+  in_progress: "IN_PROGRESS",
+  waiting_for_customer: "WAITING_CUSTOMER",
+  resolved: "RESOLVED",
+  reopened: "REOPENED",
+  closed: "CLOSED",
+  escalated: "ESCALATED",
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GET /api/v1/complaints
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/v1/complaints
+ *
+ * Lists complaints with pagination, search, and status filter.
+ * Requires `complaint:read:all` permission.
+ *
+ * Query parameters:
+ *   - page:     integer (1-based, default 1)
+ *   - pageSize: integer (1–100, default 20)
+ *   - search:   string  (matches against ticketNumber and title/category)
+ *   - status:   "all" | "open" | "assigned" | "in_progress" | ... (default "all")
+ *
+ * Responses:
+ *   200 – Paginated list of complaints
+ *   422 – Validation error
+ */
+export async function GET(request: Request) {
+  const ctx: Record<string, unknown> = {};
+
+  try {
+    // -- Authorization ------------------------------------------------
+    const auth = await requirePermissions(request, Permissions.COMPLAINT_READ_ALL);
+    if (!auth.allowed) return auth.response;
+    ctx.userId = auth.user.userId;
+
+    // -- Parse Query Parameters ---------------------------------------
+    const url = new URL(request.url);
+    const queryParams: Record<string, string> = {};
+    url.searchParams.forEach((value, key) => {
+      queryParams[key] = value;
+    });
+
+    const parsed = listComplaintsSchema.safeParse(queryParams);
+    if (!parsed.success) {
+      const details = parsed.error.issues.map((issue) => ({
+        field: issue.path.join("."),
+        message: issue.message,
+        constraint: issue.code,
+      }));
+      return validationErrorResponse(details);
+    }
+
+    const { page, pageSize, search, status } = parsed.data;
+
+    // -- Build filters ------------------------------------------------
+    const where: Record<string, unknown> = { deletedAt: null };
+
+    if (search) {
+      where.OR = [
+        { ticketNumber: { contains: search, mode: "insensitive" } },
+        { title: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (status && status !== "all") {
+      where.currentStatus = STATUS_MAP[status] ?? "OPEN";
+    }
+
+    // -- Execute query ------------------------------------------------
+    const skip = (page - 1) * pageSize;
+
+    const [complaints, totalItems] = await Promise.all([
+      prisma.complaint.findMany({
+        where: where as any,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+        select: complaintSelect,
+      }),
+      prisma.complaint.count({ where: where as any }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    logger.info("Complaints listed", {
+      ...ctx,
+      page,
+      pageSize,
+      totalItems,
+      filters: { search, status },
+    });
+
+    return successResponse(
+      complaints.map((c) => toComplaintResponse(c as any)),
+      { page, pageSize, totalItems, totalPages },
+    );
+  } catch (error) {
+    logger.error("Complaint listing failed", ctx, error);
+    return internalErrorResponse("Failed to list complaints");
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // POST /api/v1/complaints
 // ═══════════════════════════════════════════════════════════════════════════
@@ -132,12 +243,12 @@ export async function POST(request: Request) {
   const ctx: Record<string, unknown> = {};
 
   try {
-    // ── Authorization ────────────────────────────────────────────────
+    // -- Authorization ------------------------------------------------
     const auth = await requirePermissions(request, Permissions.COMPLAINT_CREATE);
     if (!auth.allowed) return auth.response;
     ctx.userId = auth.user.userId;
 
-    // ── Parse & Validate Body ────────────────────────────────────────
+    // -- Parse & Validate Body ----------------------------------------
     const body = await request.json();
     const parsed = createComplaintSchema.safeParse(body);
 
@@ -152,7 +263,7 @@ export async function POST(request: Request) {
 
     const { productId, category: categoryName, priority, severity, description } = parsed.data;
 
-    // ── Verify product exists (not deleted) ───────────────────────────
+    // -- Verify product exists (not deleted) ---------------------------
     const product = await prisma.product.findFirst({
       where: { id: productId, deletedAt: null, status: { not: "DISABLED" } },
       select: { id: true, productName: true },
@@ -162,7 +273,7 @@ export async function POST(request: Request) {
       return notFoundResponse("Product not found or is disabled");
     }
 
-    // ── Look up category by name ─────────────────────────────────────
+    // -- Look up category by name -------------------------------------
     const category = await prisma.complaintCategory.findFirst({
       where: {
         name: { equals: categoryName, mode: "insensitive" },
@@ -183,25 +294,25 @@ export async function POST(request: Request) {
     ctx.productId = productId;
     ctx.category = categoryName;
 
-    // ── Map enums ────────────────────────────────────────────────────
+    // -- Map enums ----------------------------------------------------
     const prismaPriority = mapApiPriorityToPrisma(priority);
     const prismaSeverity = mapApiSeverityToPrisma(severity);
 
-    // ── Generate ticket number ────────────────────────────────────────
+    // -- Generate ticket number ----------------------------------------
     const ticketNumber = await generateTicketNumber();
     ctx.ticketNumber = ticketNumber;
 
-    // ── Auto-assign using the load-balanced engine ────────────────────
+    // -- Auto-assign using the load-balanced engine --------------------
     const { assignedTeamId, assignedAgentId } = await resolveBestAssignment(
       productId,
       prismaPriority,
       category.id,
     );
 
-    // ── Determine status based on assignment ──────────────────────────
+    // -- Determine status based on assignment --------------------------
     const currentStatus = assignedTeamId ? "ASSIGNED" : "OPEN";
 
-    // ── Create complaint in transaction ───────────────────────────────
+    // -- Create complaint in transaction -------------------------------
     const complaint = await prisma.$transaction(async (tx: any) => {
       // 1. Create the complaint
       const created = await tx.complaint.create({
@@ -252,7 +363,7 @@ export async function POST(request: Request) {
       return created;
     });
 
-    // ── Notify team leads and assigned agent (fire-and-forget) ─────────
+    // -- Notify team leads and assigned agent (fire-and-forget) ---------
     if (assignedTeamId || assignedAgentId) {
       createAssignmentNotification(
         complaint.id,

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect, type FormEvent, type ChangeEvent } from "react";
+import { useState, useRef, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { getAccessToken } from "@/hooks/useAuth";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// -- Types ------------------------------------------------------------------
 
 interface FieldErrors {
   name?: string;
@@ -16,31 +16,24 @@ interface ServerError {
   message: string;
 }
 
-// ── Constants ──────────────────────────────────────────────────────────────
+// -- Constants --------------------------------------------------------------
 
 const DESCRIPTION_MAX = 500;
 
-// ── Particle Background ────────────────────────────────────────────────────
+// -- Particle Background ----------------------------------------------------
 
 function ParticleField() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-
-  const particles = useMemo(
-    () =>
-      Array.from({ length: 18 }, (_, i) => ({
-        id: i,
-        x: `${Math.random() * 100}%`,
-        y: `${Math.random() * 100}%`,
-        size: 1.5 + Math.random() * 2.5,
-        delay: Math.random() * 8,
-        duration: 5 + Math.random() * 7,
-        dx: `${-30 + Math.random() * 60}px`,
-      })),
-    [],
+  const [particles] = useState(() =>
+    Array.from({ length: 18 }, (_, i) => ({
+      id: i,
+      x: `${Math.random() * 100}%`,
+      y: `${Math.random() * 100}%`,
+      size: 1.5 + Math.random() * 2.5,
+      delay: Math.random() * 8,
+      duration: 5 + Math.random() * 7,
+      dx: `${-30 + Math.random() * 60}px`,
+    }))
   );
-
-  if (!mounted) return null;
 
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
@@ -94,7 +87,7 @@ function ParticleField() {
   );
 }
 
-// ── Field Error ────────────────────────────────────────────────────────────
+// -- Field Error ------------------------------------------------------------
 
 function FieldError({ message }: { message: string }) {
   if (!message) return null;
@@ -105,7 +98,7 @@ function FieldError({ message }: { message: string }) {
   );
 }
 
-// ── Character Count Ring ───────────────────────────────────────────────────
+// -- Character Count Ring ---------------------------------------------------
 
 function CharRing({ current, max }: { current: number; max: number }) {
   const fraction = current / max;
@@ -149,7 +142,7 @@ function CharRing({ current, max }: { current: number; max: number }) {
   );
 }
 
-// ── Status Toggle ──────────────────────────────────────────────────────────
+// -- Status Toggle ----------------------------------------------------------
 
 function StatusToggle({
   value,
@@ -217,7 +210,7 @@ function StatusToggle({
   );
 }
 
-// ── Main Create Product Page ───────────────────────────────────────────────
+// -- Main Create Product Page -----------------------------------------------
 
 export default function CreateProductPage() {
   const router = useRouter();
@@ -239,7 +232,7 @@ export default function CreateProductPage() {
     nameRef.current?.focus();
   }, []);
 
-  // ── Validation ──────────────────────────────────────────────────────────
+  // -- Validation ----------------------------------------------------------
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
@@ -258,7 +251,7 @@ export default function CreateProductPage() {
     return errors;
   }
 
-  // ── Submit ──────────────────────────────────────────────────────────────
+  // -- Submit --------------------------------------------------------------
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -318,7 +311,7 @@ export default function CreateProductPage() {
         return;
       }
 
-      // ── Success ──
+      // -- Success --
       setIsSuccess(true);
     } catch {
       setServerError({
@@ -331,7 +324,7 @@ export default function CreateProductPage() {
     }
   }
 
-  // ── Field change handlers ───────────────────────────────────────────────
+  // -- Field change handlers -----------------------------------------------
 
   function handleFieldChange(
     field: keyof FieldErrors,
@@ -346,7 +339,7 @@ export default function CreateProductPage() {
     };
   }
 
-  // ── Success View ────────────────────────────────────────────────────────
+  // -- Success View --------------------------------------------------------
 
   if (isSuccess) {
     return (
@@ -422,13 +415,13 @@ export default function CreateProductPage() {
     );
   }
 
-  // ── Create Product Form ─────────────────────────────────────────────────
+  // -- Create Product Form -------------------------------------------------
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-4 py-12">
       <ParticleField />
 
-      {/* ── Background ambient orbs ── */}
+      {/* -- Background ambient orbs -- */}
       <div
         className="pointer-events-none fixed top-1/2 left-1/2 h-[70vmin] w-[70vmin] -translate-x-1/2 -translate-y-1/2 animate-pulse-glow rounded-full"
         style={{
@@ -438,7 +431,7 @@ export default function CreateProductPage() {
         aria-hidden="true"
       />
 
-      {/* ── Form Halo (container) — never a rectangle ── */}
+      {/* -- Form Halo (container) — never a rectangle -- */}
       <div
         className="relative w-full max-w-[480px] animate-fade-in rounded-[2.5rem] px-6 py-10 sm:px-10 sm:py-14"
         style={{
@@ -461,7 +454,7 @@ export default function CreateProductPage() {
           aria-hidden="true"
         />
 
-        {/* ── Header ── */}
+        {/* -- Header -- */}
         <div className="mb-10 text-center">
           <h1 className="text-2xl font-medium tracking-tight text-solvent sm:text-3xl">
             New Product
@@ -472,7 +465,7 @@ export default function CreateProductPage() {
           </p>
         </div>
 
-        {/* ── Server Error Banner ── */}
+        {/* -- Server Error Banner -- */}
         {serverError && (
           <div
             className="mb-6 animate-slide-up rounded-2xl px-4 py-3 text-sm"
@@ -496,7 +489,7 @@ export default function CreateProductPage() {
           </div>
         )}
 
-        {/* ── Form ── */}
+        {/* -- Form -- */}
         <form onSubmit={handleSubmit} noValidate className="space-y-7">
           {/* Product Name */}
           <div className="floating-label">
@@ -587,7 +580,7 @@ export default function CreateProductPage() {
             />
           </div>
 
-          {/* ── Submit ── */}
+          {/* -- Submit -- */}
           <div className="pt-4">
             <button
               type="submit"
@@ -606,7 +599,7 @@ export default function CreateProductPage() {
           </div>
         </form>
 
-        {/* ── Footer link ── */}
+        {/* -- Footer link -- */}
         <p className="mt-8 text-center text-sm text-solvent/30">
           Changed your mind?{" "}
           <button
@@ -619,7 +612,7 @@ export default function CreateProductPage() {
         </p>
       </div>
 
-      {/* ── Ambient phosphor ground glow ── */}
+      {/* -- Ambient phosphor ground glow -- */}
       <div
         className="pointer-events-none fixed bottom-0 left-1/2 h-32 w-[80vmin] -translate-x-1/2"
         style={{
